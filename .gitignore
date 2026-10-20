@@ -1,0 +1,9 @@
+toolchain/
+build/
+dist/*.idsig
+keystore/
+.android/
+.home/
+locals.properties
+.DS_Store
+*.log

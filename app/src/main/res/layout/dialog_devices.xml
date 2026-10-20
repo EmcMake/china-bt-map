@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <RadioGroup
+        android:id="@+id/modeGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/modeSpp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/mode_spp" />
+
+        <RadioButton
+            android:id="@+id/modeBle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:text="@string/mode_ble" />
+    </RadioGroup>
+
+    <TextView
+        android:id="@+id/modeHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/mode_hint"
+        android:textColor="#78909C"
+        android:textSize="11sp" />
+
+    <ListView
+        android:id="@+id/deviceList"
+        android:layout_width="match_parent"
+        android:layout_height="160dp"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/scanState"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#78909C"
+        android:textSize="11sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnRescan"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_marginRight="6dp"
+            android:layout_weight="1"
+            android:text="@string/rescan" />
+
+        <Button
+            android:id="@+id/btnBtSettings"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="@string/bt_settings" />
+    </LinearLayout>
+</LinearLayout>

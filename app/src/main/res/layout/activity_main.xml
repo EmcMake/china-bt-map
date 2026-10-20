@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.btmap.china.map.ChinaMapView
+        android:id="@+id/map"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 顶部状态条 -->
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        android:background="@drawable/bg_panel"
+        android:elevation="3dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="10dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/title"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/status_disconnected"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnConnect"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:backgroundTint="@color/primary"
+            android:minWidth="0dp"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:text="@string/connect"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btnMore"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:layout_marginLeft="6dp"
+            android:backgroundTint="#ECEFF1"
+            android:minWidth="0dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:text="@string/more"
+            android:textColor="#37474F"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- 右侧缩放按钮 -->
+    <LinearLayout
+        android:id="@+id/zoomBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right|center_vertical"
+        android:layout_marginRight="10dp"
+        android:background="@drawable/bg_panel"
+        android:elevation="3dp"
+        android:orientation="vertical"
+        android:padding="4dp">
+
+        <Button
+            android:id="@+id/btnZoomIn"
+            android:layout_width="42dp"
+            android:layout_height="38dp"
+            android:backgroundTint="#FFFFFF"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:text="+"
+            android:textColor="#37474F"
+            android:textSize="18sp" />
+
+        <Button
+            android:id="@+id/btnZoomOut"
+            android:layout_width="42dp"
+            android:layout_height="38dp"
+            android:layout_marginTop="2dp"
+            android:backgroundTint="#FFFFFF"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:text="−"
+            android:textColor="#37474F"
+            android:textSize="18sp" />
+
+        <Button
+            android:id="@+id/btnFit"
+            android:layout_width="42dp"
+            android:layout_height="38dp"
+            android:layout_marginTop="2dp"
+            android:backgroundTint="#FFFFFF"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:text="◎"
+            android:textColor="#37474F"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- 日志面板 -->
+    <ScrollView
+        android:id="@+id/logPanel"
+        android:layout_width="match_parent"
+        android:layout_height="150dp"
+        android:layout_gravity="bottom"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginBottom="98dp"
+        android:background="@drawable/bg_panel"
+        android:elevation="3dp"
+        android:padding="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/logText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="#37474F"
+            android:textSize="10sp" />
+    </ScrollView>
+
+    <!-- 底部信息条 -->
+    <LinearLayout
+        android:id="@+id/bottomBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="8dp"
+        android:background="@drawable/bg_panel"
+        android:elevation="3dp"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/coordText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="monospace"
+                android:text="@string/waiting"
+                android:textColor="#263238"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/countText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 点"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnFollow"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_marginRight="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="#ECEFF1"
+                android:minWidth="0dp"
+                android:text="@string/follow_on"
+                android:textColor="#37474F"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btnClear"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_marginRight="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="#ECEFF1"
+                android:minWidth="0dp"
+                android:text="@string/clear"
+                android:textColor="#37474F"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btnLog"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:backgroundTint="#ECEFF1"
+                android:minWidth="0dp"
+                android:text="@string/log"
+                android:textColor="#37474F"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

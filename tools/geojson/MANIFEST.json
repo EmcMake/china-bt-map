@@ -1,0 +1,280 @@
+{
+  "source": "https://geo.datav.aliyun.com/areas_v3/bound/",
+  "fetched_at": "2026-10-20T10:32:17Z",
+  "provinces": [
+    {
+      "adcode": "110000",
+      "name": "北京市"
+    },
+    {
+      "adcode": "120000",
+      "name": "天津市"
+    },
+    {
+      "adcode": "130000",
+      "name": "河北省"
+    },
+    {
+      "adcode": "140000",
+      "name": "山西省"
+    },
+    {
+      "adcode": "150000",
+      "name": "内蒙古自治区"
+    },
+    {
+      "adcode": "210000",
+      "name": "辽宁省"
+    },
+    {
+      "adcode": "220000",
+      "name": "吉林省"
+    },
+    {
+      "adcode": "230000",
+      "name": "黑龙江省"
+    },
+    {
+      "adcode": "310000",
+      "name": "上海市"
+    },
+    {
+      "adcode": "320000",
+      "name": "江苏省"
+    },
+    {
+      "adcode": "330000",
+      "name": "浙江省"
+    },
+    {
+      "adcode": "340000",
+      "name": "安徽省"
+    },
+    {
+      "adcode": "350000",
+      "name": "福建省"
+    },
+    {
+      "adcode": "360000",
+      "name": "江西省"
+    },
+    {
+      "adcode": "370000",
+      "name": "山东省"
+    },
+    {
+      "adcode": "410000",
+      "name": "河南省"
+    },
+    {
+      "adcode": "420000",
+      "name": "湖北省"
+    },
+    {
+      "adcode": "430000",
+      "name": "湖南省"
+    },
+    {
+      "adcode": "440000",
+      "name": "广东省"
+    },
+    {
+      "adcode": "450000",
+      "name": "广西壮族自治区"
+    },
+    {
+      "adcode": "460000",
+      "name": "海南省"
+    },
+    {
+      "adcode": "500000",
+      "name": "重庆市"
+    },
+    {
+      "adcode": "510000",
+      "name": "四川省"
+    },
+    {
+      "adcode": "520000",
+      "name": "贵州省"
+    },
+    {
+      "adcode": "530000",
+      "name": "云南省"
+    },
+    {
+      "adcode": "540000",
+      "name": "西藏自治区"
+    },
+    {
+      "adcode": "610000",
+      "name": "陕西省"
+    },
+    {
+      "adcode": "620000",
+      "name": "甘肃省"
+    },
+    {
+      "adcode": "630000",
+      "name": "青海省"
+    },
+    {
+      "adcode": "640000",
+      "name": "宁夏回族自治区"
+    },
+    {
+      "adcode": "650000",
+      "name": "新疆维吾尔自治区"
+    },
+    {
+      "adcode": "710000",
+      "name": "台湾省"
+    },
+    {
+      "adcode": "810000",
+      "name": "香港特别行政区"
+    },
+    {
+      "adcode": "820000",
+      "name": "澳门特别行政区"
+    }
+  ],
+  "files": {
+    "cn_100000_full.json": {
+      "sha256": "99adfeded5223848bbe37a0a12f8023e11ee12161c7800521c27db42fdeac275",
+      "bytes": 582522
+    },
+    "prov_110000_full.json": {
+      "sha256": "7a333e5737d1e69a7e90400874ec908d5cb5c6a8d8efead24c0f137345054d95",
+      "bytes": 101117
+    },
+    "prov_120000_full.json": {
+      "sha256": "9626c700abca708da272e03879ad98db4f1385fad11b8877481b13a0c2ef86db",
+      "bytes": 70970
+    },
+    "prov_130000_full.json": {
+      "sha256": "c7e8f6d81bf815b309e081b17325f73134bfa6929332e1c135398e82216f70f7",
+      "bytes": 73454
+    },
+    "prov_140000_full.json": {
+      "sha256": "5da8144cc2d3a6ab6be40a63fd2ed099a33f1deae8e727214542e73f410ff607",
+      "bytes": 60906
+    },
+    "prov_150000_full.json": {
+      "sha256": "9a4a3b95d903b064c8e815b78d4f80f391b4bdafd3b52dabd854755457385660",
+      "bytes": 79281
+    },
+    "prov_210000_full.json": {
+      "sha256": "679ec739045413f4de0898a9d6a7957f6ffc551809f3f52c786a30d6242b02c5",
+      "bytes": 161469
+    },
+    "prov_220000_full.json": {
+      "sha256": "828be8771e676322a81f560611821230d66e1e1dca87308efd7865b27423e605",
+      "bytes": 147299
+    },
+    "prov_230000_full.json": {
+      "sha256": "f8d3bdbee4068811237efd23fe349a4c6e3bc99334079f9746f19e7df5ea4854",
+      "bytes": 146797
+    },
+    "prov_310000_full.json": {
+      "sha256": "f699513d5eb63d56350018d90db92345aeefc88c9e4f76197ea405178b6c31ae",
+      "bytes": 83280
+    },
+    "prov_320000_full.json": {
+      "sha256": "6af17f07a3c83bad7d4d552efdd7f59ba8f7574363d1a686f59bc1d0f91733e7",
+      "bytes": 97545
+    },
+    "prov_330000_full.json": {
+      "sha256": "f87241d47687264861aa619b8dc37ffeb61a2be5d6018a8c01ec0ce0acb5cb38",
+      "bytes": 120401
+    },
+    "prov_340000_full.json": {
+      "sha256": "7ca3290e0458f34086df4d61fa9804e2c624d55dfe5f8f6a841844b5dcd43207",
+      "bytes": 127323
+    },
+    "prov_350000_full.json": {
+      "sha256": "0c749acd0048a5042a5ee701ddd5a87c17ff91afb9b728d23b7253799135b58f",
+      "bytes": 114243
+    },
+    "prov_360000_full.json": {
+      "sha256": "ee9696faaca6e644fb0f1aebfc0bd800beb938dd2eb1737fcb8b244072405d9e",
+      "bytes": 121694
+    },
+    "prov_370000_full.json": {
+      "sha256": "04d600e257db17869aa7fabcfcd6a87a7236791a7f02dd891636f5f58da0133f",
+      "bytes": 167872
+    },
+    "prov_410000_full.json": {
+      "sha256": "34119256db754324763c8484122d71524818c9cec974207bd27a9aafe2d8ad63",
+      "bytes": 153774
+    },
+    "prov_420000_full.json": {
+      "sha256": "0acb559fcfe2ab2c5d2707c2477e60facdf4328ad89b8ab7d9126c5166675502",
+      "bytes": 155792
+    },
+    "prov_430000_full.json": {
+      "sha256": "091cb4e77e2bc73fb37c8a9b3b174db9b2008db5f544a7156f5a8ad34e77dd66",
+      "bytes": 175676
+    },
+    "prov_440000_full.json": {
+      "sha256": "209ad617a296b154c4fd0828180b2a9ab2b270044990ab34e72a344ce913c8c7",
+      "bytes": 192961
+    },
+    "prov_450000_full.json": {
+      "sha256": "5bdcaa8808d78065be4a496718b449c5b97d1ef27900bbfcd2407f69c5f6c041",
+      "bytes": 167980
+    },
+    "prov_460000_full.json": {
+      "sha256": "ae44b392cf32ff7f7df5466ca16fa7f1b70b9fb9c36f00f54d6f142d011c65e4",
+      "bytes": 34123
+    },
+    "prov_500000_full.json": {
+      "sha256": "ab7c6769ee2c8941054b71d82261eae5385e237354aea1887e00c416872c457d",
+      "bytes": 162145
+    },
+    "prov_510000_full.json": {
+      "sha256": "e8e3a3820d97ca3453c18c6335703f4e4f93df95ba394a1259eebab59e7072b1",
+      "bytes": 164814
+    },
+    "prov_520000_full.json": {
+      "sha256": "3336ddee76a8d33a5841f928c764ec4e4bb33988ec59d08efc75000251af1cf6",
+      "bytes": 130185
+    },
+    "prov_530000_full.json": {
+      "sha256": "c11c7adf7581fc53e965bf0fd2b3217213f118c59ebddf4cab929c51ee00aa6e",
+      "bytes": 122596
+    },
+    "prov_540000_full.json": {
+      "sha256": "ba95ab3f6b9183942c183d66d1258ac710dcdf9cb49c51f79915532379747c81",
+      "bytes": 134516
+    },
+    "prov_610000_full.json": {
+      "sha256": "969ca94cc865bf3a37c22e30d7c0125196fd22175f7c212953185f7c67921682",
+      "bytes": 71735
+    },
+    "prov_620000_full.json": {
+      "sha256": "5252d2ce49a7b6f721d5ca9404a2960b428fab09b6f62256fe62db0218d1123e",
+      "bytes": 105622
+    },
+    "prov_630000_full.json": {
+      "sha256": "42caf689c3c37630aa725bac2351153bac00fb626a01fbe5f141c3a279706936",
+      "bytes": 97941
+    },
+    "prov_640000_full.json": {
+      "sha256": "99e03114c3f7dff3fad5b87a88ddf2fb08687d117c62bf999236191ca29d78f9",
+      "bytes": 49533
+    },
+    "prov_650000_full.json": {
+      "sha256": "587b5069eddcad4b5a2f784380351f756f0ba955211721091b85a6528ae74745",
+      "bytes": 119226
+    },
+    "prov_810000_full.json": {
+      "sha256": "69ae74ef15e964508e6619763affbbff669295e23db0ab487350b7a060aa2bc9",
+      "bytes": 132725
+    },
+    "prov_820000_full.json": {
+      "sha256": "54a6c69e0007640b25d45b44357037fb40bce2e0e36e7a9026ebcbdfa7cfb19a",
+      "bytes": 13423
+    }
+  }
+}
