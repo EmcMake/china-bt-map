@@ -7,3 +7,4 @@ keystore/
 locals.properties
 .DS_Store
 *.log
+.gh-config/
