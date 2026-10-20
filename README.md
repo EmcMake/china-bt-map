@@ -3,7 +3,9 @@
 一个**完全离线**的 Android App：内置中国地图数据，通过蓝牙（经典 SPP / BLE）接收经纬度文本，在地图上实时打点、连成轨迹。
 APK 里没有网络权限，不请求任何地图瓦片，装上就能用。
 
-- 安装包：`dist/china-bt-map-1.0.apk`（约 577 KB，已签名）
+- GitHub 仓库：<https://github.com/EmcMake/china-bt-map>
+- 手机直接下载 APK：<https://github.com/EmcMake/china-bt-map/releases/download/v1.0/china-bt-map-1.0.apk>
+- 安装包：`dist/china-bt-map-1.0.apk`（577 KB，已签名）
 - 包名：`com.btmap.china`，最低 Android 7.0（API 24），targetSdk 34
 - 纯 Java + Framework API，无 AndroidX / GMS / native 库依赖
 
@@ -11,7 +13,11 @@ APK 里没有网络权限，不请求任何地图瓦片，装上就能用。
 
 ## 一、安装
 
-把 `dist/china-bt-map-1.0.apk` 传到手机（微信/QQ 文件传输、数据线、网盘均可），点击安装；
+**手机浏览器**打开 Release 页面直接下载（推荐）：
+
+<https://github.com/EmcMake/china-bt-map/releases/download/v1.0/china-bt-map-1.0.apk>
+
+也可以把 `dist/china-bt-map-1.0.apk` 用微信/QQ、数据线或网盘传到手机，点击安装；
 系统提示“未知来源”时允许一次即可。或用 adb：
 
 ```bash
