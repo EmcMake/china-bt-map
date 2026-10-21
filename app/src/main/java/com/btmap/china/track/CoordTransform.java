@@ -42,6 +42,30 @@ public final class CoordTransform {
         return new double[]{wgsLat, wgsLon};
     }
 
+    private static final double X_PI = Math.PI * 3000.0 / 180.0;
+
+    /** BD-09 → GCJ-02。境外原样返回。 */
+    public static double[] bd09ToGcj02(double lat, double lon) {
+        if (outOfChina(lat, lon)) {
+            return new double[]{lat, lon};
+        }
+        double x = lon - 0.0065;
+        double y = lat - 0.006;
+        double z = Math.sqrt(x * x + y * y) - 0.00002 * Math.sin(y * X_PI);
+        double theta = Math.atan2(y, x) - 0.000003 * Math.cos(x * X_PI);
+        return new double[]{z * Math.sin(theta), z * Math.cos(theta)};
+    }
+
+    /** GCJ-02 → BD-09。境外原样返回。 */
+    public static double[] gcj02ToBd09(double lat, double lon) {
+        if (outOfChina(lat, lon)) {
+            return new double[]{lat, lon};
+        }
+        double z = Math.sqrt(lon * lon + lat * lat) + 0.00002 * Math.sin(lat * X_PI);
+        double theta = Math.atan2(lat, lon) + 0.000003 * Math.cos(lon * X_PI);
+        return new double[]{z * Math.sin(theta) + 0.006, z * Math.cos(theta) + 0.0065};
+    }
+
     private static double transformLat(double x, double y) {
         double ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y
                 + 0.2 * Math.sqrt(Math.abs(x));

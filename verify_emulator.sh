@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# 模拟器端到端验证：创建 AVD → 安装 APK → 注入示例坐标 → 截图 → 检查崩溃
+# 模拟器端到端验证：创建 AVD → 安装 APK → 注入示例坐标 → 截取主界面/全国视图/
+# 坐标系对话框/蓝牙诊断/最大缩放 → 检查崩溃
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -15,12 +16,12 @@ mkdir -p "$HOME" "$ANDROID_AVD_HOME" "$ROOT/docs/screenshots" "$ROOT/build"
 
 PKG=com.btmap.china
 AVD=chinamap_test
-APK="$ROOT/dist/china-bt-map-1.0.apk"
+APK="$ROOT/dist/china-bt-map-1.1.apk"
 KEEP="${KEEP:-0}"
 [ -f "$APK" ] || { echo "缺少 $APK，请先 ./build.sh" >&2; exit 1; }
 
-# 演示轨迹用 '/' 分隔，避免 adb shell 把分号当命令分隔符
-DEMO="39.9042,116.4074/39.9142,116.4200/39.9250,116.4340/39.9330,116.4520/39.9350,116.4700/39.9280,116.4880/39.9150,116.5000/39.9000,116.5070/39.8850,116.5040/39.8720,116.4930/39.8630,116.4780/39.8580,116.4620/39.8590,116.4440/39.8660,116.4300/39.8760,116.4180/39.8880,116.4100/39.8990,116.4060/39.9042,116.4074"
+# 用 '/' 分隔，避免 adb shell 把分号当命令分隔符
+DEMO="39.9042,116.4074/39.9150,116.4300/39.9250,116.4500/39.9200,116.4700/39.9000,116.4800/39.8850,116.4700/39.8800,116.4500/39.8900,116.4300/39.9042,116.4074"
 
 if ! "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" list avd 2>/dev/null | grep -q "Name: $AVD"; then
   echo "==> 创建 AVD"
@@ -37,7 +38,6 @@ else
     -no-window -no-audio -no-boot-anim -no-snapshot -gpu "${GPU:-swiftshader_indirect}" \
     > "$ROOT/build/emulator.log" 2>&1 &
   echo "emulator pid=$!"
-  adb start-server >/dev/null 2>&1 || true
   adb wait-for-device
 fi
 
@@ -54,25 +54,19 @@ done
 adb shell settings put global window_animation_scale 0 || true
 adb shell input keyevent 82 >/dev/null 2>&1 || true
 
-echo "==> 安装 APK"
+echo "==> 安装 APK（清空旧数据，验证首次启动默认 GCJ-02）"
 adb install -r "$APK"
-
-echo "==> 授予蓝牙权限（模拟器无真实蓝牙，只验证界面与解析链路）"
+adb shell pm clear "$PKG" >/dev/null
 adb shell pm grant "$PKG" android.permission.BLUETOOTH_SCAN || true
 adb shell pm grant "$PKG" android.permission.BLUETOOTH_CONNECT || true
 
 echo "==> 启动 App 并注入坐标"
 adb logcat -c || true
 adb shell am start -n "$PKG/.MainActivity" --es demo_points "$DEMO" >/dev/null
-sleep 10
+sleep 6
 adb exec-out screencap -p > "$ROOT/docs/screenshots/app_main.png"
 
-echo "==> 双击放大后截图"
-adb shell "input tap 540 900; input tap 540 900" >/dev/null
-sleep 2
-adb exec-out screencap -p > "$ROOT/docs/screenshots/app_zoom.png"
-
-# 用 uiautomator 找到控件位置再点，避免写死分辨率坐标
+# 按文本找控件再点，避免写死分辨率
 tap_text() {
   local want="$1"
   adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
@@ -98,10 +92,26 @@ PY
   return 1
 }
 
-if tap_text "连接设备"; then
-  sleep 3
-  adb exec-out screencap -p > "$ROOT/docs/screenshots/device_dialog.png"
-fi
+echo "==> 全国视图"
+tap_text "◎" && sleep 2 && adb exec-out screencap -p > "$ROOT/docs/screenshots/app_national.png"
+
+echo "==> 坐标系对话框"
+tap_text "GCJ-02" && sleep 2 && adb exec-out screencap -p > "$ROOT/docs/screenshots/datum_dialog.png"
+adb shell input keyevent 4
+
+echo "==> 蓝牙诊断"
+tap_text "连接设备" && sleep 2
+tap_text "诊断" && sleep 2 && adb exec-out screencap -p > "$ROOT/docs/screenshots/diagnostics.png"
+adb shell input keyevent 4
+adb shell input keyevent 4
+
+echo "==> 最大缩放"
+for i in $(seq 1 12); do
+  tap_text "+" >/dev/null 2>&1 || true
+  sleep 0.2
+done
+sleep 2
+adb exec-out screencap -p > "$ROOT/docs/screenshots/app_max_zoom.png"
 
 echo "==> 检查崩溃日志"
 if adb logcat -d -s AndroidRuntime:E | grep -q "$PKG"; then
@@ -110,7 +120,6 @@ if adb logcat -d -s AndroidRuntime:E | grep -q "$PKG"; then
   exit 1
 fi
 echo "未发现崩溃"
-adb shell dumpsys activity activities 2>/dev/null | grep -E "ResumedActivity" | head -2 || true
 
 echo
 echo "完成。截图：$ROOT/docs/screenshots/"

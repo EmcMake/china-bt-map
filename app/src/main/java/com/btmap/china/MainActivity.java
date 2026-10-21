@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -20,6 +21,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -32,7 +34,7 @@ import android.widget.Toast;
 import com.btmap.china.bt.BtLink;
 import com.btmap.china.map.ChinaMapView;
 import com.btmap.china.track.CoordParser;
-import com.btmap.china.track.CoordTransform;
+import com.btmap.china.track.CoordSystems;
 import com.btmap.china.track.TrackStore;
 
 import java.nio.charset.StandardCharsets;
@@ -44,14 +46,11 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private static final int REQ_PERMS = 2001;
     private static final int REQ_ENABLE = 2002;
 
-    private static final int COORD_NONE = 0;
-    private static final int COORD_WGS_TO_GCJ = 1;
-    private static final int COORD_GCJ_TO_WGS = 2;
-
     private ChinaMapView mapView;
     private TextView statusText;
     private TextView coordText;
     private TextView countText;
+    private TextView datumChip;
     private TextView logText;
     private ScrollView logPanel;
     private Button btnConnect;
@@ -63,18 +62,25 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private final StringBuilder logBuffer = new StringBuilder();
     private int logLines;
 
-    private int mode = BtLink.MODE_SPP;
-    private int coordMode = COORD_NONE;
+    private int mode = BtLink.MODE_BLE;
+    private int datum = CoordSystems.DEFAULT;
     private boolean connected;
     private boolean pendingConnect;
     private boolean logVisible;
+
+    private boolean showCity = true;
+    private boolean showLabels = true;
+    private boolean showGrid = true;
+    private boolean showAccuracy = true;
+    private boolean showBubble = true;
 
     private AlertDialog deviceDialog;
     private DeviceAdapter deviceAdapter;
     private TextView scanStateView;
     private ListView deviceList;
-    private RadioButton rbSpp;
-    private RadioButton rbBle;
+
+    private AlertDialog diagnosticsDialog;
+    private TextView diagnosticsText;
 
     private SharedPreferences prefs;
 
@@ -86,13 +92,20 @@ public class MainActivity extends Activity implements BtLink.Callback {
         setContentView(R.layout.activity_main);
 
         prefs = getSharedPreferences("settings", MODE_PRIVATE);
-        coordMode = prefs.getInt("coordMode", COORD_NONE);
-        mode = prefs.getInt("mode", BtLink.MODE_SPP);
+        migrateSettings();
+        datum = prefs.getInt("datum", CoordSystems.DEFAULT);
+        mode = prefs.getInt("mode", BtLink.MODE_BLE);
+        showCity = prefs.getBoolean("showCity", true);
+        showLabels = prefs.getBoolean("showLabels", true);
+        showGrid = prefs.getBoolean("showGrid", true);
+        showAccuracy = prefs.getBoolean("showAccuracy", true);
+        showBubble = prefs.getBoolean("showBubble", true);
 
         mapView = findViewById(R.id.map);
         statusText = findViewById(R.id.status);
         coordText = findViewById(R.id.coordText);
         countText = findViewById(R.id.countText);
+        datumChip = findViewById(R.id.datumChip);
         logPanel = findViewById(R.id.logPanel);
         logText = findViewById(R.id.logText);
         btnConnect = findViewById(R.id.btnConnect);
@@ -101,11 +114,15 @@ public class MainActivity extends Activity implements BtLink.Callback {
         Button btnMore = findViewById(R.id.btnMore);
 
         mapView.setPickListener((lat, lon) -> showPickedCoordinate(lat, lon));
+        mapView.setOnZoomLimitListener(() ->
+                toast("已到地图数据精度上限（约 10 米/像素）"));
+        applyDisplaySettings();
 
         bt = new BtLink(this, this);
 
         btnConnect.setOnClickListener(v -> requestConnect());
         btnMore.setOnClickListener(v -> showMoreMenu());
+        datumChip.setOnClickListener(v -> showDatumDialog());
         findViewById(R.id.btnZoomIn).setOnClickListener(v -> mapView.zoomBy(1.8));
         findViewById(R.id.btnZoomOut).setOnClickListener(v -> mapView.zoomBy(1 / 1.8));
         findViewById(R.id.btnFit).setOnClickListener(v -> {
@@ -122,6 +139,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
 
         TrackStore.INSTANCE.addListener(trackListener);
         updateFollowButton();
+        updateDatumChip();
         refreshCount();
         if (TrackStore.INSTANCE.size() > 0) {
             double[] last = TrackStore.INSTANCE.lastLatLon();
@@ -129,9 +147,19 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 coordText.setText(formatCoord(last[0], last[1]));
             }
         }
-        addLog("应用启动，地图数据已内置（离线）");
+        addLog("应用启动，内置 GCJ-02 底图；输入坐标系：" + CoordSystems.name(datum));
 
         handleIntent(getIntent());
+        maybeAutoConnect();
+    }
+
+    private void migrateSettings() {
+        if (prefs.contains("coordMode")) {
+            int legacy = prefs.getInt("coordMode", 0);
+            int converted = CoordSystems.fromLegacy(legacy);
+            prefs.edit().putInt("datum", converted).remove("coordMode").apply();
+            addLog("已迁移旧坐标设置到 " + CoordSystems.name(converted));
+        }
     }
 
     @Override
@@ -152,10 +180,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
         } else if (demo) {
             injectDemo();
         }
-        if (intent.getBooleanExtra("show_log", false)) {
-            if (!logVisible) {
-                toggleLog();
-            }
+        if (intent.getBooleanExtra("show_log", false) && !logVisible) {
+            toggleLog();
         }
     }
 
@@ -199,6 +225,23 @@ public class MainActivity extends Activity implements BtLink.Callback {
         showDeviceDialog();
     }
 
+    private void maybeAutoConnect() {
+        if (!prefs.getBoolean("autoConnect", true)) {
+            return;
+        }
+        String addr = prefs.getString("lastAddress", "");
+        if (addr == null || addr.isEmpty()) {
+            return;
+        }
+        if (!hasPermissions() || !bt.isEnabled()) {
+            return;
+        }
+        final int lastMode = prefs.getInt("lastMode", BtLink.MODE_BLE);
+        addLog("尝试自动连接上次设备 " + addr);
+        new android.os.Handler(getMainLooper()).postDelayed(
+                () -> bt.connectByAddress(lastMode, addr), 1200);
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -239,8 +282,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private void showDeviceDialog() {
         View view = getLayoutInflater().inflate(R.layout.dialog_devices, null);
         RadioGroup group = view.findViewById(R.id.modeGroup);
-        rbSpp = view.findViewById(R.id.modeSpp);
-        rbBle = view.findViewById(R.id.modeBle);
+        RadioButton rbSpp = view.findViewById(R.id.modeSpp);
+        RadioButton rbBle = view.findViewById(R.id.modeBle);
         deviceList = view.findViewById(R.id.deviceList);
         scanStateView = view.findViewById(R.id.scanState);
         if (mode == BtLink.MODE_BLE) {
@@ -259,6 +302,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         deviceList.setAdapter(deviceAdapter);
         deviceList.setOnItemClickListener((parent, v, position, id) -> {
             BtLink.DeviceItem item = deviceAdapter.items.get(position);
+            prefs.edit().putInt("lastMode", mode).apply();
             bt.setMode(mode);
             bt.connect(mode, item);
             addLog("连接设备: " + item.name + " / " + item.address + " / 模式="
@@ -276,6 +320,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 toast("无法打开系统蓝牙设置");
             }
         });
+        view.findViewById(R.id.btnDiagnostics).setOnClickListener(v -> showDiagnostics());
 
         deviceDialog = new AlertDialog.Builder(this)
                 .setTitle("选择蓝牙设备")
@@ -294,20 +339,29 @@ public class MainActivity extends Activity implements BtLink.Callback {
     // ------------------------------------------------------------ BtLink.Callback
     @Override
     public void onStatus(String text, boolean isConnected) {
-        statusText.setText(text);
-        statusText.setTextColor(isConnected ? Color.parseColor("#2E7D32") : Color.parseColor("#607D8B"));
-        btnConnect.setText(isConnected ? "已连接" : "连接设备");
-        boolean wasConnected = connected;
-        connected = isConnected;
-        if (isConnected) {
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        } else {
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        }
-        if (isConnected != wasConnected) {
-            addLog("状态: " + text);
-        }
-        refreshCount();
+        runOnUiThread(() -> {
+            statusText.setText(text);
+            statusText.setTextColor(isConnected ? Color.parseColor("#2E7D32") : Color.parseColor("#607D8B"));
+            btnConnect.setText(isConnected ? "已连接" : "连接设备");
+            boolean wasConnected = connected;
+            connected = isConnected;
+            if (isConnected) {
+                getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                BtLink.DeviceItem d = bt.lastDevice();
+                if (d != null) {
+                    prefs.edit()
+                            .putString("lastAddress", d.address)
+                            .putInt("lastMode", bt.mode())
+                            .apply();
+                }
+            } else {
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            }
+            if (isConnected != wasConnected) {
+                addLog("状态: " + text);
+            }
+            refreshCount();
+        });
     }
 
     @Override
@@ -317,7 +371,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
 
     @Override
     public void onLog(String line) {
-        addLog(line);
+        runOnUiThread(() -> addLog(line));
     }
 
     @Override
@@ -334,15 +388,32 @@ public class MainActivity extends Activity implements BtLink.Callback {
         }
     }
 
+    @Override
+    public void onDiagnosticsChanged() {
+        runOnUiThread(this::refreshDiagnostics);
+    }
+
     private final CoordParser.Listener parserListener = new CoordParser.Listener() {
         @Override
-        public void onPoint(double lat, double lon, double alt, boolean hasAlt, String rawLine) {
-            double[] p = applyCoordMode(lat, lon);
-            boolean added = TrackStore.INSTANCE.add(p[0], p[1], alt, hasAlt);
-            coordText.setText(formatCoord(p[0], p[1]));
+        public void onPoint(double lat, double lon, double alt, boolean hasAlt,
+                            double accuracy, String rawLine) {
+            boolean added = TrackStore.INSTANCE.add(lat, lon, alt, hasAlt, accuracy, datum);
+            double[] map = CoordSystems.toMap(datum, lat, lon);
+            coordText.setText(formatCoord(map[0], map[1]));
             if (added) {
-                addLog("定位: " + formatCoord(p[0], p[1])
-                        + (hasAlt ? String.format(Locale.US, "  高度 %.1fm", alt) : ""));
+                StringBuilder sb = new StringBuilder("定位: ");
+                if (CoordSystems.needsConversion(datum)) {
+                    sb.append(String.format(Locale.US, "%.6f,%.6f", lat, lon))
+                            .append(" [").append(CoordSystems.name(datum)).append("] → ");
+                }
+                sb.append(formatCoord(map[0], map[1]));
+                if (hasAlt) {
+                    sb.append(String.format(Locale.US, "  高度 %.1fm", alt));
+                }
+                if (accuracy > 0.5) {
+                    sb.append(String.format(Locale.US, "  ±%.0fm", accuracy));
+                }
+                addLog(sb.toString());
             }
             mapView.onTrackChanged();
         }
@@ -353,36 +424,151 @@ public class MainActivity extends Activity implements BtLink.Callback {
         }
     };
 
-    private double[] applyCoordMode(double lat, double lon) {
-        if (coordMode == COORD_WGS_TO_GCJ) {
-            return CoordTransform.wgs84ToGcj02(lat, lon);
+    // ------------------------------------------------------------ 坐标系
+    private void updateDatumChip() {
+        datumChip.setText(CoordSystems.chipLabel(datum));
+    }
+
+    private void showDatumDialog() {
+        View view = getLayoutInflater().inflate(R.layout.dialog_datum, null);
+        RadioGroup group = view.findViewById(R.id.datumGroup);
+        int[] ids = {R.id.datumGcj, R.id.datumWgs, R.id.datumBd, R.id.datumCgcs};
+        int[] values = {CoordSystems.GCJ02, CoordSystems.WGS84, CoordSystems.BD09, CoordSystems.CGCS2000};
+        int checkedId = ids[0];
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == datum) {
+                checkedId = ids[i];
+            }
         }
-        if (coordMode == COORD_GCJ_TO_WGS) {
-            return CoordTransform.gcj02ToWgs84(lat, lon);
+        group.check(checkedId);
+        CheckBox redatum = view.findViewById(R.id.redatum);
+        boolean hasTrack = TrackStore.INSTANCE.size() > 0;
+        redatum.setEnabled(hasTrack);
+        redatum.setChecked(hasTrack);
+        redatum.setText(hasTrack
+                ? "同时按新坐标系重算已有轨迹（" + TrackStore.INSTANCE.size() + " 点）"
+                : "同时按新坐标系重算已有轨迹（暂无轨迹）");
+
+        new AlertDialog.Builder(this)
+                .setTitle("输入的坐标系")
+                .setView(view)
+                .setPositiveButton("确定", (d, w) -> {
+                    int selected = CoordSystems.GCJ02;
+                    int id = group.getCheckedRadioButtonId();
+                    for (int i = 0; i < ids.length; i++) {
+                        if (ids[i] == id) {
+                            selected = values[i];
+                        }
+                    }
+                    datum = selected;
+                    prefs.edit().putInt("datum", datum).apply();
+                    if (redatum.isChecked() && TrackStore.INSTANCE.size() > 0) {
+                        TrackStore.INSTANCE.redatumAll(datum);
+                        addLog("已按 " + CoordSystems.name(datum) + " 重算 " + TrackStore.INSTANCE.size() + " 个点");
+                        double[] last = TrackStore.INSTANCE.lastLatLon();
+                        if (last != null) {
+                            coordText.setText(formatCoord(last[0], last[1]));
+                        }
+                    }
+                    updateDatumChip();
+                    addLog("输入坐标系: " + CoordSystems.name(datum) + " → 底图 GCJ-02");
+                    toast("已切换：" + CoordSystems.chipLabel(datum));
+                    mapView.invalidate();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    // ------------------------------------------------------------ 诊断
+    private void showDiagnostics() {
+        bt.noteEnvironment(hasPermissions(), bt.isEnabled());
+        diagnosticsText = new TextView(this);
+        diagnosticsText.setTextSize(10f);
+        diagnosticsText.setTypeface(Typeface.MONOSPACE);
+        diagnosticsText.setTextColor(Color.parseColor("#263238"));
+        ScrollView scroll = new ScrollView(this);
+        int pad = dp(14);
+        scroll.setPadding(pad, pad, pad, pad);
+        scroll.addView(diagnosticsText);
+
+        diagnosticsDialog = new AlertDialog.Builder(this)
+                .setTitle("蓝牙连接诊断")
+                .setView(scroll)
+                .setPositiveButton("重连", (d, w) -> {
+                    BtLink.DeviceItem item = bt.lastDevice();
+                    if (item != null) {
+                        bt.connect(bt.mode(), item);
+                    } else {
+                        toast("还没有选择过设备");
+                    }
+                })
+                .setNeutralButton("重新订阅", (d, w) -> bt.resubscribe())
+                .setNegativeButton("关闭", null)
+                .create();
+        diagnosticsDialog.show();
+        refreshDiagnostics();
+    }
+
+    private void refreshDiagnostics() {
+        if (diagnosticsDialog == null || !diagnosticsDialog.isShowing() || diagnosticsText == null) {
+            return;
         }
-        return new double[]{lat, lon};
+        BtLink.Diagnostics d = bt.getDiagnostics();
+        StringBuilder sb = new StringBuilder();
+        sb.append("设备: ").append(d.deviceName.isEmpty() ? "(未选择)" : d.deviceName).append('\n');
+        sb.append("地址: ").append(d.address.isEmpty() ? "-" : d.address).append('\n');
+        sb.append("模式: ").append(d.mode == BtLink.MODE_BLE ? "BLE" : "经典 SPP").append('\n');
+        sb.append(String.format(Locale.US, "RSSI: %d dBm   MTU: %d  状态: %s\n",
+                d.rssi, d.mtu, d.connected ? "已连接" : "未连接"));
+        sb.append("收包: ").append(d.bytesReceived).append(" 字节\n");
+        sb.append("最近数据: ").append(d.lastData.isEmpty() ? "-" : d.lastData).append("\n\n");
+        for (int i = 0; i < d.steps.length; i++) {
+            String mark = d.stepState[i] == BtLink.STATE_OK ? "✓"
+                    : d.stepState[i] == BtLink.STATE_FAIL ? "✗" : "·";
+            sb.append(mark).append(' ').append(d.steps[i]);
+            String detail = d.stepDetail[i];
+            if (detail != null && !detail.isEmpty()) {
+                sb.append("：").append(detail);
+            }
+            sb.append('\n');
+        }
+        sb.append('\n');
+        if (d.chars.isEmpty()) {
+            sb.append("(尚未发现服务/特征)\n");
+        } else {
+            sb.append("服务/特征：\n");
+            String lastService = "";
+            for (BtLink.GattCharInfo c : d.chars) {
+                if (!c.serviceUuid.equals(lastService)) {
+                    lastService = c.serviceUuid;
+                    sb.append("  [S] ").append(lastService).append('\n');
+                }
+                sb.append("      ").append(c.charUuid)
+                        .append("  ").append(c.propsLabel())
+                        .append(c.subscribed ? "  已订阅" : "")
+                        .append(c.bytes > 0 ? "  收" + c.bytes + "B" : "")
+                        .append('\n');
+            }
+        }
+        if (!d.lastError.isEmpty()) {
+            sb.append("\n错误: ").append(d.lastError).append('\n');
+        }
+        sb.append("\n提示：PHY6222 透传模块的服务 UUID 由固件决定，\n");
+        sb.append("App 会自动订阅所有 notify 特征；若没有数据，\n");
+        sb.append("用“发送指令”发一次 AT 或换行符试试。\n");
+        diagnosticsText.setText(sb.toString());
     }
 
     // ------------------------------------------------------------ 菜单
     private void showMoreMenu() {
-        String coordLabel;
-        switch (coordMode) {
-            case COORD_WGS_TO_GCJ:
-                coordLabel = "坐标转换：WGS84 → GCJ-02";
-                break;
-            case COORD_GCJ_TO_WGS:
-                coordLabel = "坐标转换：GCJ-02 → WGS84";
-                break;
-            default:
-                coordLabel = "坐标转换：不转换";
-                break;
-        }
         final List<String> items = new ArrayList<>();
-        items.add(coordLabel);
+        items.add("坐标系：" + CoordSystems.chipLabel(datum));
         items.add("演示数据（画一条示例轨迹）");
         items.add("输入测试坐标");
         items.add(logVisible ? "隐藏日志面板" : "显示日志面板");
+        items.add("蓝牙诊断");
         items.add("向模块发送指令…");
+        items.add("地图显示…");
         if (connected) {
             items.add("断开蓝牙连接");
         }
@@ -392,16 +578,20 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 .setTitle("更多")
                 .setItems(labels, (d, which) -> {
                     String label = labels[which];
-                    if (label.startsWith("坐标转换")) {
-                        showCoordModeDialog();
+                    if (label.startsWith("坐标系")) {
+                        showDatumDialog();
                     } else if (label.startsWith("演示数据")) {
                         injectDemo();
                     } else if (label.startsWith("输入测试坐标")) {
                         showInputDialog();
                     } else if (label.contains("日志面板")) {
                         toggleLog();
+                    } else if (label.startsWith("蓝牙诊断")) {
+                        showDiagnostics();
                     } else if (label.startsWith("向模块发送")) {
                         showSendDialog();
+                    } else if (label.startsWith("地图显示")) {
+                        showMapDisplayDialog();
                     } else if (label.startsWith("断开蓝牙")) {
                         bt.disconnect();
                         addLog("手动断开蓝牙");
@@ -412,18 +602,48 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 .show();
     }
 
-    private void showCoordModeDialog() {
-        String[] items = {"不转换（默认）", "WGS84 → GCJ-02（国内 GPS 打点用）", "GCJ-02 → WGS84"};
+    private void showMapDisplayDialog() {
+        String[] items = {"显示市界", "显示地名", "显示经纬网", "显示定位精度圈", "显示坐标气泡"};
+        boolean[] checked = {showCity, showLabels, showGrid, showAccuracy, showBubble};
         new AlertDialog.Builder(this)
-                .setTitle("坐标转换")
-                .setSingleChoiceItems(items, coordMode, (d, which) -> {
-                    coordMode = which;
-                    prefs.edit().putInt("coordMode", which).apply();
-                    addLog("坐标转换模式: " + items[which]);
-                    d.dismiss();
+                .setTitle("地图显示")
+                .setMultiChoiceItems(items, checked, (d, which, isChecked) -> {
+                    switch (which) {
+                        case 0:
+                            showCity = isChecked;
+                            break;
+                        case 1:
+                            showLabels = isChecked;
+                            break;
+                        case 2:
+                            showGrid = isChecked;
+                            break;
+                        case 3:
+                            showAccuracy = isChecked;
+                            break;
+                        default:
+                            showBubble = isChecked;
+                            break;
+                    }
+                    prefs.edit()
+                            .putBoolean("showCity", showCity)
+                            .putBoolean("showLabels", showLabels)
+                            .putBoolean("showGrid", showGrid)
+                            .putBoolean("showAccuracy", showAccuracy)
+                            .putBoolean("showBubble", showBubble)
+                            .apply();
+                    applyDisplaySettings();
                 })
-                .setNegativeButton("取消", null)
+                .setPositiveButton("完成", null)
                 .show();
+    }
+
+    private void applyDisplaySettings() {
+        mapView.setCityVisible(showCity);
+        mapView.setLabelsVisible(showLabels);
+        mapView.setGridVisible(showGrid);
+        mapView.setAccuracyVisible(showAccuracy);
+        mapView.setBubbleVisible(showBubble);
     }
 
     private void showInputDialog() {
@@ -431,54 +651,64 @@ public class MainActivity extends Activity implements BtLink.Callback {
         et.setHint("例如 31.2304,121.4737");
         et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         et.setMinLines(3);
-        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        int pad = dp(16);
         LinearLayout wrap = new LinearLayout(this);
         wrap.setPadding(pad, pad / 2, pad, 0);
         wrap.addView(et, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         new AlertDialog.Builder(this)
-                .setTitle("输入测试坐标")
+                .setTitle("输入测试坐标（按当前坐标系）")
                 .setView(wrap)
                 .setPositiveButton("发送到地图", (d, w) -> {
                     String text = et.getText().toString();
-                    if (text.trim().isEmpty()) {
-                        return;
+                    if (!text.trim().isEmpty()) {
+                        feedDemoPoints(text);
                     }
-                    feedDemoPoints(text);
                 })
                 .setNegativeButton("取消", null)
                 .show();
     }
 
     private void showSendDialog() {
-        EditText et = new EditText(this);
-        et.setHint("HELLO 或 $PMTK220,1000*1F");
-        et.setInputType(InputType.TYPE_CLASS_TEXT);
-        et.setSingleLine(true);
-        int pad = (int) (16 * getResources().getDisplayMetrics().density);
         LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
         wrap.setPadding(pad, pad / 2, pad, 0);
+        EditText et = new EditText(this);
+        et.setHint("文本指令，例如 AT 或 \\r\\n");
+        et.setSingleLine(true);
+        CheckBox hex = new CheckBox(this);
+        hex.setText("按 HEX 发送（如 0D0A）");
         wrap.addView(et);
+        wrap.addView(hex);
         new AlertDialog.Builder(this)
                 .setTitle("发送给蓝牙模块")
                 .setView(wrap)
                 .setPositiveButton("发送", (d, w) -> {
-                    String s = et.getText().toString();
-                    if (!s.isEmpty()) {
+                    String s = et.getText().toString().replace("\\r", "\r").replace("\\n", "\n");
+                    if (s.isEmpty()) {
+                        return;
+                    }
+                    if (hex.isChecked()) {
+                        bt.sendHex(s);
+                    } else {
                         bt.send(s);
                     }
+                    addLog("发送: " + (hex.isChecked() ? "HEX " + s : s));
                 })
                 .setNegativeButton("取消", null)
                 .show();
     }
 
     private void showAbout() {
-        String msg = "中国地图蓝牙轨迹  v1.0\n\n"
-                + "· 地图数据完全内置，不联网、不请求 INTERNET 权限\n"
-                + "· 支持经典蓝牙 SPP 与 BLE GATT 两种接收方式\n"
+        String msg = "中国地图蓝牙轨迹  v1.1\n\n"
+                + "· 地图完全内置（GCJ-02 底图），不联网、无 INTERNET 权限\n"
+                + "· 输入坐标系可选：GCJ-02 / WGS-84 / BD-09 / CGCS2000\n"
+                + "· 蓝牙：经典 SPP + BLE GATT（自动枚举并订阅所有通知特征）\n"
                 + "· 坐标格式：31.2304,121.4737 / lat:.. lon:.. / JSON / NMEA GGA·RMC·GLL\n"
-                + "· 地图基准为 GCJ-02，可在“更多 → 坐标转换”里对齐 GPS 原始坐标\n\n"
-                + "地图数据：阿里云 DataV.GeoAtlas（省级 + 地级市边界）\n"
+                + "· 支持 31.2304N,121.4737E；NMEA GGA 的 HDOP 会换算成精度圈\n\n"
+                + "底图：DataV.GeoAtlas（省级 + 地级市），GCJ-02。\n"
+                + "CGCS2000 与 WGS-84 差异 <10cm，按 WGS-84 处理。\n"
                 + "轨迹仅保存在本次运行内存中，退出应用后清空。";
         new AlertDialog.Builder(this)
                 .setTitle("关于")
@@ -501,9 +731,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 .show();
     }
 
-    // ------------------------------------------------------------ 演示/测试数据
+    // ------------------------------------------------------------ 演示/测试
     private void injectDemo() {
-        // 北京五环附近的一条示例轨迹（也是蓝牙解析链路的自测数据）
         double[][] pts = {
                 {39.9042, 116.4074}, {39.9142, 116.4200}, {39.9250, 116.4340},
                 {39.9330, 116.4520}, {39.9350, 116.4700}, {39.9280, 116.4880},
@@ -516,11 +745,10 @@ public class MainActivity extends Activity implements BtLink.Callback {
         for (double[] p : pts) {
             sb.append(String.format(Locale.US, "%.6f,%.6f\n", p[0], p[1]));
         }
-        addLog("注入演示轨迹 " + pts.length + " 点");
+        addLog("注入演示轨迹 " + pts.length + " 点（" + CoordSystems.name(datum) + "）");
         feedDemoPoints(sb.toString());
     }
 
-    /** 支持多种分隔符：换行、分号；每段交给正式的解析器处理。 */
     private void feedDemoPoints(String text) {
         String[] lines = text.split("[\\n;；|/]+");
         int count = 0;
@@ -538,7 +766,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         }
     }
 
-    // ------------------------------------------------------------ UI 刷新
+    // ------------------------------------------------------------ UI
     private void refreshCount() {
         int n = TrackStore.INSTANCE.size();
         countText.setText(String.format(Locale.US, "%d 点%s", n, connected ? " · 已连接" : ""));
@@ -558,8 +786,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void addLog(String line) {
-        String stamp = String.format(Locale.US, "%tH:%tM:%tS ", System.currentTimeMillis(),
-                System.currentTimeMillis(), System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        String stamp = String.format(Locale.US, "%tH:%tM:%tS ", now, now, now);
         if (logLines > 250) {
             int cut = logBuffer.indexOf("\n");
             if (cut > 0) {
@@ -594,7 +822,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private String formatCoord(double lat, double lon) {
-        return String.format(Locale.US, "%.6f, %.6f", lat, lon);
+        return String.format(Locale.US, "%.7f, %.7f", lat, lon);
     }
 
     private static String trim(String s, int max) {
@@ -602,6 +830,10 @@ public class MainActivity extends Activity implements BtLink.Callback {
             return "";
         }
         return s.length() <= max ? s : s.substring(0, max) + "…";
+    }
+
+    private int dp(int v) {
+        return (int) (v * getResources().getDisplayMetrics().density);
     }
 
     private void toast(String msg) {
@@ -617,7 +849,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         super.onDestroy();
     }
 
-    // ------------------------------------------------------------ 设备列表 Adapter
+    // ------------------------------------------------------------ 设备列表
     private static final class DeviceAdapter extends BaseAdapter {
         private final Context context;
         final List<BtLink.DeviceItem> items = new ArrayList<>();

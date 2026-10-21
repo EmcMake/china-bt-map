@@ -8,7 +8,8 @@ cd "$(dirname "$0")"
 ORG="${1:-EmcMake}"
 REPO="${2:-china-bt-map}"
 VIS="${3:-public}"
-APK="dist/china-bt-map-1.0.apk"
+VERSION="${4:-1.1}"
+APK="dist/china-bt-map-$VERSION.apk"
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "当前目录不是 git 仓库" >&2
@@ -41,16 +42,16 @@ else
 fi
 
 if [ -f "$APK" ]; then
-  if ! gh release view v1.0 -R "$ORG/$REPO" >/dev/null 2>&1; then
-    echo "==> 创建 Release v1.0 并上传 APK"
-    gh release create v1.0 "$APK#china-bt-map-1.0.apk" -R "$ORG/$REPO" \
-      --title "v1.0 中国地图蓝牙轨迹" \
+  if ! gh release view "v$VERSION" -R "$ORG/$REPO" >/dev/null 2>&1; then
+    echo "==> 创建 Release v$VERSION 并上传 APK"
+    gh release create "v$VERSION" "$APK#china-bt-map-$VERSION.apk" -R "$ORG/$REPO" \
+      --title "v$VERSION 中国地图蓝牙轨迹" \
       --notes "离线中国地图 + 蓝牙坐标轨迹。下载下方 APK 直接安装（Android 7.0+），无需修改任何东西。"
   else
-    echo "==> Release v1.0 已存在，跳过"
+    echo "==> Release v$VERSION 已存在，跳过"
   fi
 fi
 
 echo
 echo "仓库: https://github.com/$ORG/$REPO"
-[ -f "$APK" ] && echo "APK : https://github.com/$ORG/$REPO/releases/download/v1.0/china-bt-map-1.0.apk"
+[ -f "$APK" ] && echo "APK : https://github.com/$ORG/$REPO/releases/download/v$VERSION/china-bt-map-$VERSION.apk"

@@ -66,5 +66,13 @@
             android:layout_height="40dp"
             android:layout_weight="1"
             android:text="@string/bt_settings" />
+
+        <Button
+            android:id="@+id/btnDiagnostics"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_marginLeft="6dp"
+            android:layout_weight="1"
+            android:text="诊断" />
     </LinearLayout>
 </LinearLayout>

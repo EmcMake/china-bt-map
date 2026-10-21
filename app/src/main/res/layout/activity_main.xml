@@ -170,6 +170,20 @@
                 android:textSize="12sp" />
 
             <TextView
+                android:id="@+id/datumChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="6dp"
+                android:background="@drawable/bg_chip"
+                android:paddingLeft="8dp"
+                android:paddingTop="3dp"
+                android:paddingRight="8dp"
+                android:paddingBottom="3dp"
+                android:text="GCJ-02（底图）"
+                android:textColor="#0D47A1"
+                android:textSize="10sp" />
+
+            <TextView
                 android:id="@+id/countText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

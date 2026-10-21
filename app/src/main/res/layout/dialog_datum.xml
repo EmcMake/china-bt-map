@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="告诉 App 蓝牙模块输出的是哪种经纬度，App 会换算到内置的 GCJ-02 底图。"
+        android:textColor="#607D8B"
+        android:textSize="12sp" />
+
+    <RadioGroup
+        android:id="@+id/datumGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp">
+
+        <RadioButton
+            android:id="@+id/datumGcj"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="GCJ-02（默认）— 与国内底图一致" />
+
+        <RadioButton
+            android:id="@+id/datumWgs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="WGS-84 — GPS 芯片原始输出" />
+
+        <RadioButton
+            android:id="@+id/datumBd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="BD-09 — 百度地图坐标" />
+
+        <RadioButton
+            android:id="@+id/datumCgcs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="CGCS2000 — 国家大地坐标（≈WGS-84）" />
+    </RadioGroup>
+
+    <CheckBox
+        android:id="@+id/redatum"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:checked="true"
+        android:text="同时按新坐标系重算已有轨迹" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="底图坐标系：GCJ-02（DataV.GeoAtlas 国内地图数据）"
+        android:textColor="#78909C"
+        android:textSize="11sp" />
+</LinearLayout>

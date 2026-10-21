@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
  */
 public final class CoordParser {
     public interface Listener {
-        void onPoint(double lat, double lon, double alt, boolean hasAlt, String rawLine);
+        void onPoint(double lat, double lon, double alt, boolean hasAlt, double accuracy, String rawLine);
 
         void onInvalid(String rawLine);
     }
@@ -89,7 +89,7 @@ public final class CoordParser {
                 listener.onInvalid(line);
             }
         } else if (listener != null) {
-            listener.onPoint(p.lat, p.lon, p.alt, p.hasAlt, line);
+            listener.onPoint(p.lat, p.lon, p.alt, p.hasAlt, p.accuracy, line);
         }
     }
 
@@ -185,6 +185,15 @@ public final class CoordParser {
                 if (!f[9].isEmpty()) {
                     p.alt = Double.parseDouble(f[9]);
                     p.hasAlt = true;
+                }
+                if (f.length > 8 && !f[8].isEmpty()) {
+                    try {
+                        double hdop = Double.parseDouble(f[8]);
+                        if (hdop > 0) {
+                            p.accuracy = hdop * 5.0; // 约 5m UERE
+                        }
+                    } catch (NumberFormatException ignored) {
+                    }
                 }
                 return p;
             }
@@ -312,6 +321,8 @@ public final class CoordParser {
         public final double lon;
         public double alt;
         public boolean hasAlt;
+        /** 米，0 表示未知。 */
+        public double accuracy;
 
         public Point(double lat, double lon) {
             this.lat = lat;

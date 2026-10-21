@@ -13,7 +13,11 @@ import android.bluetooth.BluetoothSocket;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -24,17 +28,19 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * 蓝牙连接控制：经典蓝牙 SPP（串口透传）与 BLE GATT（订阅所有 notify/indicate 特征）。
- * 所有回调都在主线程。
+ * 蓝牙连接控制：BLE GATT（自动枚举/订阅全部 notify 特征）+ 经典 SPP。
+ * 面向 PHY6222 这类“UUID 由固件决定”的 BLE 透传模块，不做 UUID 硬编码。
  */
 @SuppressLint("MissingPermission")
 public final class BtLink {
@@ -42,6 +48,17 @@ public final class BtLink {
 
     public static final int MODE_SPP = 0;
     public static final int MODE_BLE = 1;
+
+    public static final String STEP_PERMISSION = "权限";
+    public static final String STEP_ADAPTER = "蓝牙开关";
+    public static final String STEP_SCAN = "扫描";
+    public static final String STEP_CONNECT = "连接";
+    public static final String STEP_DISCOVER = "发现服务";
+    public static final String STEP_SUBSCRIBE = "订阅通知";
+    public static final String STEP_DATA = "收到数据";
+    private static final String[] STEPS = {STEP_PERMISSION, STEP_ADAPTER, STEP_SCAN,
+            STEP_CONNECT, STEP_DISCOVER, STEP_SUBSCRIBE, STEP_DATA};
+    public static final int STATE_PENDING = 0, STATE_OK = 1, STATE_FAIL = 2;
 
     private static final UUID SPP_UUID =
             UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
@@ -58,6 +75,8 @@ public final class BtLink {
         void onDevices(List<DeviceItem> items);
 
         void onScanState(String text);
+
+        void onDiagnosticsChanged();
     }
 
     public static final class DeviceItem {
@@ -74,12 +93,56 @@ public final class BtLink {
             this.rssi = rssi;
             this.bonded = bonded;
         }
+    }
 
-        @Override
-        public String toString() {
-            return name + "\n" + address + (bonded ? "  · 已配对" : "")
-                    + (rssi > -127 ? "  · " + rssi + "dBm" : "");
+    public static final class GattCharInfo {
+        public final String serviceUuid;
+        public final String charUuid;
+        public final int properties;
+        public boolean subscribed;
+        public long bytes;
+
+        GattCharInfo(String serviceUuid, String charUuid, int properties) {
+            this.serviceUuid = serviceUuid;
+            this.charUuid = charUuid;
+            this.properties = properties;
         }
+
+        public boolean notifiable() {
+            return (properties & (BluetoothGattCharacteristic.PROPERTY_NOTIFY
+                    | BluetoothGattCharacteristic.PROPERTY_INDICATE)) != 0;
+        }
+
+        public boolean writable() {
+            return (properties & (BluetoothGattCharacteristic.PROPERTY_WRITE
+                    | BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) != 0;
+        }
+
+        public String propsLabel() {
+            StringBuilder sb = new StringBuilder();
+            if ((properties & BluetoothGattCharacteristic.PROPERTY_READ) != 0) sb.append("R");
+            if ((properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) sb.append("W");
+            if ((properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) sb.append("w");
+            if ((properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0) sb.append("N");
+            if ((properties & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0) sb.append("I");
+            return sb.length() == 0 ? "-" : sb.toString();
+        }
+    }
+
+    public static final class Diagnostics {
+        public String deviceName = "";
+        public String address = "";
+        public int rssi = -127;
+        public int mtu;
+        public boolean connected;
+        public int mode = MODE_BLE;
+        public final String[] steps = STEPS.clone();
+        public final int[] stepState = new int[STEPS.length];
+        public final String[] stepDetail = new String[STEPS.length];
+        public final List<GattCharInfo> chars = new ArrayList<>();
+        public long bytesReceived;
+        public String lastError = "";
+        public String lastData = "";
     }
 
     private final Context context;
@@ -94,7 +157,8 @@ public final class BtLink {
 
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic writeChar;
-    private final List<DescriptorWrite> pendingDescs = new ArrayList<>();
+    private final ArrayDeque<CccdWrite> cccdQueue = new ArrayDeque<>();
+    private final List<GattCharInfo> charInfos = new ArrayList<>();
     private int subscribed;
 
     private BluetoothSocket socket;
@@ -102,9 +166,41 @@ public final class BtLink {
 
     private boolean connected;
     private DeviceItem lastDevice;
+    private int mode = MODE_SPP;
     private int reconnectAttempts;
+    private int connectAttempts;
+    private boolean autoConnectFallback;
     private boolean manualDisconnect;
     private boolean released;
+    private boolean discovering;
+    private int mtu;
+
+    private final int[] stepState = new int[STEPS.length];
+    private final String[] stepDetail = new String[STEPS.length];
+    private long bytesReceived;
+    private String lastError = "";
+    private String lastData = "";
+    private int rssi = -127;
+
+    private boolean bondReceiverRegistered;
+    private final BroadcastReceiver bondReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent intent) {
+            if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(intent.getAction())) {
+                BluetoothDevice d = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1);
+                if (d != null && state == BluetoothDevice.BOND_BONDED) {
+                    postLog("配对完成，重新连接");
+                    setStep(STEP_CONNECT, STATE_PENDING, "已配对，重新连接");
+                    main.postDelayed(() -> {
+                        if (lastDevice != null && !released) {
+                            connect(mode, lastDevice);
+                        }
+                    }, 600);
+                }
+            }
+        }
+    };
 
     public BtLink(Context context, Callback callback) {
         this.context = context.getApplicationContext();
@@ -115,6 +211,7 @@ public final class BtLink {
         this.scanner = adapter == null ? null : adapter.getBluetoothLeScanner();
     }
 
+    // ------------------------------------------------------------ 状态
     public boolean isSupported() {
         return adapter != null;
     }
@@ -131,18 +228,88 @@ public final class BtLink {
         return lastDevice;
     }
 
+    public int mode() {
+        return mode;
+    }
+
+    public void setMode(int m) {
+        mode = m;
+    }
+
+    private void setStep(String step, int state, String detail) {
+        for (int i = 0; i < STEPS.length; i++) {
+            if (STEPS[i].equals(step)) {
+                stepState[i] = state;
+                stepDetail[i] = detail;
+            }
+        }
+        main.post(() -> callback.onDiagnosticsChanged());
+    }
+
+    private void fail(String step, String detail) {
+        setStep(step, STATE_FAIL, detail);
+        lastError = step + ": " + detail;
+        postLog("失败 " + lastError);
+    }
+
+    /** 让诊断页反映当前的权限/蓝牙开关状态。 */
+    public void noteEnvironment(boolean perms, boolean enabled) {
+        if (perms) {
+            setStep(STEP_PERMISSION, STATE_OK, "已授权");
+        }
+        if (enabled) {
+            setStep(STEP_ADAPTER, STATE_OK, "蓝牙已开启");
+        }
+    }
+
+    public Diagnostics getDiagnostics() {
+        Diagnostics d = new Diagnostics();
+        d.deviceName = lastDevice == null ? "" : lastDevice.name;
+        d.address = lastDevice == null ? "" : lastDevice.address;
+        d.rssi = rssi;
+        d.mtu = mtu;
+        d.connected = connected;
+        d.mode = mode;
+        System.arraycopy(stepState, 0, d.stepState, 0, STEPS.length);
+        System.arraycopy(stepDetail, 0, d.stepDetail, 0, STEPS.length);
+        d.chars.addAll(charInfos);
+        d.bytesReceived = bytesReceived;
+        d.lastError = lastError;
+        d.lastData = lastData;
+        return d;
+    }
+
+    private void resetDiagnostics(DeviceItem item) {
+        Arrays.fill(stepState, STATE_PENDING);
+        Arrays.fill(stepDetail, null);
+        charInfos.clear();
+        cccdQueue.clear();
+        subscribed = 0;
+        bytesReceived = 0;
+        lastError = "";
+        lastData = "";
+        mtu = 0;
+        rssi = item == null ? -127 : item.rssi;
+        setStep(STEP_PERMISSION, STATE_OK, "已授权");
+        setStep(STEP_ADAPTER, STATE_OK, "蓝牙已开启");
+    }
+
     // ------------------------------------------------------------ 扫描
-    public void scan(int mode) {
+    public void scan(int m) {
+        mode = m;
         if (adapter == null) {
             postLog("本机不支持蓝牙");
+            fail(STEP_ADAPTER, "本机不支持蓝牙");
             return;
         }
         if (!adapter.isEnabled()) {
             postStatus("蓝牙未开启", false);
+            fail(STEP_ADAPTER, "蓝牙未开启");
             return;
         }
         found.clear();
-        if (mode == MODE_BLE) {
+        setStep(STEP_SCAN, STATE_PENDING, "正在扫描…");
+        if (m == MODE_BLE) {
             startBleScan();
         } else {
             loadBonded();
@@ -160,8 +327,10 @@ public final class BtLink {
         }
         postDevices(items);
         if (items.isEmpty()) {
-            postScanState("没有已配对的设备。请先到系统蓝牙设置里配对模块（如 HC-05），再回来连接。");
+            setStep(STEP_SCAN, STATE_FAIL, "没有已配对设备");
+            postScanState("没有已配对的设备。请先到系统蓝牙设置里配对，再回来连接。");
         } else {
+            setStep(STEP_SCAN, STATE_OK, "已配对 " + items.size() + " 个");
             postScanState("已配对设备 " + items.size() + " 个，点选后立即连接。");
         }
     }
@@ -172,20 +341,24 @@ public final class BtLink {
         }
         if (scanner == null) {
             postLog("BLE 扫描不可用");
+            fail(STEP_SCAN, "BLE 扫描不可用");
             return;
         }
         if (scanning) {
             return;
         }
         scanning = true;
-        postScanState("正在扫描 BLE 设备…（12 秒）");
-        main.postDelayed(scanTimeout, 12000);
+        postScanState("正在扫描 BLE 设备…（15 秒）");
+        main.postDelayed(scanTimeout, 15000);
         try {
-            scanner.startScan(scanCallback);
+            ScanSettings settings = new ScanSettings.Builder()
+                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                    .build();
+            scanner.startScan(null, settings, scanCallback);
         } catch (SecurityException e) {
             scanning = false;
             main.removeCallbacks(scanTimeout);
-            postLog("扫描失败，缺少权限: " + e.getMessage());
+            fail(STEP_SCAN, "缺少权限: " + e.getMessage());
         }
     }
 
@@ -194,7 +367,7 @@ public final class BtLink {
         public void onScanResult(int callbackType, ScanResult result) {
             BluetoothDevice d = result.getDevice();
             String name = result.getScanRecord() == null ? null : result.getScanRecord().getDeviceName();
-            if (name == null) {
+            if (name == null || name.isEmpty()) {
                 name = safeName(d);
             }
             boolean bonded = false;
@@ -203,7 +376,10 @@ public final class BtLink {
             } catch (SecurityException ignored) {
             }
             DeviceItem item = new DeviceItem(d, name, result.getRssi(), bonded);
+            boolean isLast = lastDevice != null && lastDevice.address.equals(item.address);
+            rssi = isLast ? item.rssi : rssi;
             found.put(item.address, item);
+            setStep(STEP_SCAN, STATE_OK, "发现 " + found.size() + " 个设备");
             postDevices(new ArrayList<>(found.values()));
         }
 
@@ -217,7 +393,7 @@ public final class BtLink {
         @Override
         public void onScanFailed(int errorCode) {
             scanning = false;
-            postScanState("扫描失败，错误码 " + errorCode);
+            fail(STEP_SCAN, "扫描失败 code=" + errorCode);
         }
     };
 
@@ -232,43 +408,123 @@ public final class BtLink {
             main.removeCallbacks(scanTimeout);
         }
         scanning = false;
-        postScanState(found.isEmpty() ? "扫描结束，未发现设备。可重试或先到系统设置里配对。" : "扫描结束。");
+        if (found.isEmpty()) {
+            setStep(STEP_SCAN, STATE_FAIL, "未发现设备");
+            postScanState("扫描结束，未发现设备。可重试或先在系统设置里配对。");
+        } else {
+            setStep(STEP_SCAN, STATE_OK, "发现 " + found.size() + " 个设备");
+            postScanState("扫描结束。");
+        }
     }
 
     // ------------------------------------------------------------ 连接
-    public void connect(int mode, DeviceItem item) {
+    public void connect(int m, DeviceItem item) {
         if (item == null) {
             return;
         }
+        stopScan();
         disconnect();
-        manualDisconnect = false;
+        mode = m;
         lastDevice = item;
+        manualDisconnect = false;
+        connectAttempts = 0;
+        autoConnectFallback = false;
         reconnectAttempts = 0;
+        resetDiagnostics(item);
         try {
             adapter.cancelDiscovery();
         } catch (Exception ignored) {
         }
-        if (mode == MODE_BLE) {
-            connectBle(item);
+        if (m == MODE_BLE) {
+            connectBleAttempts(item);
         } else {
             connectSpp(item);
         }
     }
 
-    private void connectBle(DeviceItem item) {
-        postStatus("正在连接 BLE: " + item.name, false);
-        postLog("BLE connectGatt → " + item.address);
+    public void connectByAddress(int m, String address) {
+        if (address == null || address.isEmpty() || adapter == null) {
+            return;
+        }
         try {
-            gatt = item.device.connectGatt(context, false, gattCallback,
+            BluetoothDevice d = adapter.getRemoteDevice(address);
+            connect(m, new DeviceItem(d, safeName(d), -127,
+                    d.getBondState() == BluetoothDevice.BOND_BONDED));
+        } catch (Exception e) {
+            postLog("自动连接失败: " + e.getMessage());
+        }
+    }
+
+    private void connectBleAttempts(DeviceItem item) {
+        if (released) {
+            return;
+        }
+        if (connectAttempts >= 3 && !autoConnectFallback) {
+            autoConnectFallback = true;
+            postLog("普通连接失败，尝试 autoConnect 兜底（15 秒）");
+            setStep(STEP_CONNECT, STATE_PENDING, "autoConnect 兜底中…");
+            main.postDelayed(() -> openGatt(item, true), 400);
+            return;
+        }
+        if (connectAttempts >= 4) {
+            fail(STEP_CONNECT, "多次连接失败，检查设备是否已被占用/不在范围");
+            postStatus("连接失败", false);
+            return;
+        }
+        connectAttempts++;
+        main.postDelayed(() -> openGatt(item, autoConnectFallback), 200L * (connectAttempts - 1));
+    }
+
+    private void openGatt(DeviceItem item, boolean autoConnect) {
+        if (released) {
+            return;
+        }
+        closeGatt();
+        setStep(STEP_CONNECT, STATE_PENDING, autoConnect ? "autoConnect 连接中…" : "连接中…");
+        postStatus("正在连接 BLE: " + item.name, false);
+        postLog("connectGatt autoConnect=" + autoConnect + " 第 " + connectAttempts + " 次");
+        try {
+            gatt = item.device.connectGatt(context, autoConnect, gattCallback,
                     BluetoothDevice.TRANSPORT_LE);
         } catch (SecurityException e) {
-            postLog("连接失败（权限）: " + e.getMessage());
-            postStatus("缺少附近设备权限", false);
+            fail(STEP_CONNECT, "缺少权限: " + e.getMessage());
             return;
         }
         if (gatt == null) {
-            postLog("connectGatt 返回 null");
-            postStatus("连接失败", false);
+            postLog("connectGatt 返回 null，重试");
+            connectBleAttempts(item);
+            return;
+        }
+        final BluetoothGatt g = gatt;
+        main.postDelayed(() -> {
+            if (gatt == g && !connected && !released) {
+                postLog("连接超时，重试");
+                closeGatt();
+                connectBleAttempts(item);
+            }
+        }, 12000);
+    }
+
+    private void closeGatt() {
+        if (gatt != null) {
+            try {
+                refreshGattCache(gatt);
+                gatt.close();
+            } catch (Exception ignored) {
+            }
+            gatt = null;
+        }
+        discovering = false;
+        cccdQueue.clear();
+        writeChar = null;
+    }
+
+    private void refreshGattCache(BluetoothGatt g) {
+        try {
+            Method m = g.getClass().getMethod("refresh");
+            m.invoke(g);
+            postLog("已刷新 GATT 缓存");
+        } catch (Exception ignored) {
         }
     }
 
@@ -277,66 +533,87 @@ public final class BtLink {
         public void onConnectionStateChange(BluetoothGatt g, int status, int newState) {
             postLog("GATT state=" + newState + " status=" + status);
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                boolean ok = g.discoverServices();
-                if (!ok) {
-                    postLog("discoverServices 调用失败");
+                connected = true;
+                connectAttempts = 0;
+                autoConnectFallback = false;
+                setStep(STEP_CONNECT, STATE_OK, "已连接");
+                postStatus("已连接，发现服务…", true);
+                try {
+                    g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
+                    refreshGattCache(g);
+                    g.requestMtu(247);
+                } catch (Exception ignored) {
                 }
+                main.postDelayed(() -> discover(g), 350);
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 boolean wasConnected = connected;
                 connected = false;
                 postStatus("已断开", false);
-                if (g != null) {
-                    g.close();
+                if (status == 133 || status == 257) {
+                    postLog("连接状态异常 " + status + "，准备重试");
+                    closeGatt();
+                    if (!manualDisconnect && !released) {
+                        connectBleAttempts(lastDevice);
+                    }
+                    return;
                 }
-                gatt = null;
-                postLog(wasConnected ? "BLE 链路断开" : "BLE 连接失败（status=" + status + "），检查设备是否在广播/是否已被占用");
-                maybeReconnect();
+                if (status == 5) {
+                    postLog("需要配对/绑定，发起 createBond");
+                    setStep(STEP_CONNECT, STATE_PENDING, "需要配对，正在绑定…");
+                    try {
+                        registerBondReceiver();
+                        if (lastDevice != null && lastDevice.device.createBond()) {
+                            return;
+                        }
+                    } catch (Exception e) {
+                        postLog("createBond 失败: " + e.getMessage());
+                    }
+                }
+                closeGatt();
+                if (wasConnected) {
+                    maybeReconnect();
+                } else {
+                    connectBleAttempts(lastDevice);
+                }
             }
         }
 
         @Override
+        public void onMtuChanged(BluetoothGatt g, int mtuValue, int status) {
+            mtu = mtuValue;
+            postLog("MTU=" + mtuValue + " status=" + status);
+            callback.onDiagnosticsChanged();
+        }
+
+        @Override
         public void onServicesDiscovered(BluetoothGatt g, int status) {
+            discovering = false;
             if (status != BluetoothGatt.GATT_SUCCESS) {
-                postLog("发现服务失败 status=" + status);
-                postStatus("发现服务失败", false);
+                fail(STEP_DISCOVER, "发现服务失败 status=" + status);
                 return;
             }
-            subscribed = 0;
-            pendingDescs.clear();
+            charInfos.clear();
             writeChar = null;
+            int totalChars = 0;
             for (BluetoothGattService s : g.getServices()) {
                 for (BluetoothGattCharacteristic c : s.getCharacteristics()) {
-                    int props = c.getProperties();
-                    if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0
-                            || (props & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) {
-                        if (writeChar == null) {
-                            writeChar = c;
-                        }
+                    totalChars++;
+                    GattCharInfo info = new GattCharInfo(s.getUuid().toString(),
+                            c.getUuid().toString(), c.getProperties());
+                    charInfos.add(info);
+                    if (writeChar == null && info.writable()) {
+                        writeChar = c;
                     }
-                    boolean notify = (props & (BluetoothGattCharacteristic.PROPERTY_NOTIFY
-                            | BluetoothGattCharacteristic.PROPERTY_INDICATE)) != 0;
-                    if (!notify) {
-                        continue;
-                    }
-                    g.setCharacteristicNotification(c, true);
-                    BluetoothGattDescriptor d = c.getDescriptor(CCCD_UUID);
-                    if (d == null) {
-                        subscribed++;
-                        continue;
-                    }
-                    byte[] value = (props & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0
-                            ? BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
-                            : BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
-                    pendingDescs.add(new DescriptorWrite(d, value));
                 }
             }
-            main.post(() -> {
-                if (pendingDescs.isEmpty()) {
-                    finishBleSetup();
-                } else {
-                    writeNextDescriptor(g);
-                }
-            });
+            setStep(STEP_DISCOVER, STATE_OK, "服务 " + g.getServices().size()
+                    + " 个 / 特征 " + totalChars + " 个");
+            postLog("发现服务 " + g.getServices().size() + " 个，特征 " + totalChars + " 个");
+            if (totalChars == 0) {
+                fail(STEP_SUBSCRIBE, "没有特征，可能不是透传模块");
+                return;
+            }
+            subscribeAll(g);
         }
 
         @Override
@@ -344,21 +621,16 @@ public final class BtLink {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 subscribed++;
             } else {
-                postLog("写入 CCCD 失败 status=" + status);
+                postLog("写 CCCD 失败 status=" + status);
+                lastError = "CCCD 写入失败 status=" + status;
             }
-            main.post(() -> {
-                if (pendingDescs.isEmpty()) {
-                    finishBleSetup();
-                } else {
-                    writeNextDescriptor(g);
-                }
-            });
+            writeNextCccd(g);
         }
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic ch, byte[] value) {
             if (value != null && value.length > 0) {
-                emit(value);
+                onData(ch.getUuid().toString(), value);
             }
         }
 
@@ -367,54 +639,136 @@ public final class BtLink {
         public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic ch) {
             byte[] value = ch.getValue();
             if (value != null && value.length > 0) {
-                emit(value);
+                onData(ch.getUuid().toString(), value);
             }
         }
     };
 
-    private static final class DescriptorWrite {
-        final BluetoothGattDescriptor descriptor;
-        final byte[] value;
-
-        DescriptorWrite(BluetoothGattDescriptor descriptor, byte[] value) {
-            this.descriptor = descriptor;
-            this.value = value;
+    private void discover(BluetoothGatt g) {
+        if (g == null || discovering || g != gatt) {
+            return;
+        }
+        discovering = true;
+        setStep(STEP_DISCOVER, STATE_PENDING, "发现服务中…");
+        boolean ok = g.discoverServices();
+        if (!ok) {
+            discovering = false;
+            fail(STEP_DISCOVER, "discoverServices 调用失败");
         }
     }
 
-    private void writeNextDescriptor(BluetoothGatt g) {
-        if (g == null || pendingDescs.isEmpty()) {
+    private void subscribeAll(BluetoothGatt g) {
+        cccdQueue.clear();
+        subscribed = 0;
+        for (BluetoothGattService s : g.getServices()) {
+            for (BluetoothGattCharacteristic c : s.getCharacteristics()) {
+                int props = c.getProperties();
+                boolean notify = (props & (BluetoothGattCharacteristic.PROPERTY_NOTIFY
+                        | BluetoothGattCharacteristic.PROPERTY_INDICATE)) != 0;
+                if (!notify) {
+                    continue;
+                }
+                g.setCharacteristicNotification(c, true);
+                BluetoothGattDescriptor d = c.getDescriptor(CCCD_UUID);
+                if (d == null) {
+                    subscribed++;
+                    continue;
+                }
+                byte[] value = (props & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0
+                        ? BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+                        : BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
+                cccdQueue.add(new CccdWrite(d, value, c.getUuid().toString()));
+            }
+        }
+        if (cccdQueue.isEmpty()) {
+            finishSubscribe();
+        } else {
+            setStep(STEP_SUBSCRIBE, STATE_PENDING, "订阅 " + cccdQueue.size() + " 个特征…");
+            main.postDelayed(() -> writeNextCccd(g), 120);
+        }
+    }
+
+    private void writeNextCccd(BluetoothGatt g) {
+        if (g == null || g != gatt) {
             return;
         }
-        DescriptorWrite w = pendingDescs.remove(0);
+        CccdWrite w = cccdQueue.poll();
+        if (w == null) {
+            finishSubscribe();
+            return;
+        }
         try {
+            boolean ok;
             if (Build.VERSION.SDK_INT >= 33) {
-                g.writeDescriptor(w.descriptor, w.value);
+                ok = g.writeDescriptor(w.descriptor, w.value) == BluetoothGatt.GATT_SUCCESS;
             } else {
                 w.descriptor.setValue(w.value);
-                g.writeDescriptor(w.descriptor);
+                ok = g.writeDescriptor(w.descriptor);
+            }
+            if (!ok) {
+                postLog("CCCD 写入调用失败: " + w.charUuid);
+                writeNextCccd(g);
             }
         } catch (SecurityException e) {
-            postLog("订阅通知失败（权限）: " + e.getMessage());
+            postLog("订阅失败（权限）: " + e.getMessage());
+            writeNextCccd(g);
         }
     }
 
-    private void finishBleSetup() {
-        if (released || !pendingDescs.isEmpty()) {
-            return;
+    private void finishSubscribe() {
+        for (GattCharInfo info : charInfos) {
+            info.subscribed = info.notifiable();
         }
-        if (subscribed == 0) {
-            postStatus("已连接，但未找到可通知特征", false);
-            postLog("该设备没有 notify/indicate 特征；可在日志面板手动发送指令触发出数");
-            return;
+        if (subscribed > 0) {
+            setStep(STEP_SUBSCRIBE, STATE_OK, "已订阅 " + subscribed + " 个特征");
+            postStatus("BLE 已连接：" + (lastDevice == null ? "" : lastDevice.name)
+                    + "（" + subscribed + " 个通知特征）", true);
+            postLog("订阅完成，共 " + subscribed + " 个 notify/indicate 特征");
+        } else {
+            setStep(STEP_SUBSCRIBE, STATE_FAIL, "没有可通知特征");
+            postStatus("已连接，但未找到可通知特征", true);
+            postLog("没有 notify/indicate 特征，可在诊断页手动发送指令");
         }
-        connected = true;
-        String name = lastDevice == null ? "" : lastDevice.name;
-        postStatus("BLE 已连接：" + name + "（" + subscribed + " 个通知特征）", true);
-        postLog("订阅完成，共 " + subscribed + " 个通知特征");
+        callback.onDiagnosticsChanged();
     }
 
+    private static final class CccdWrite {
+        final BluetoothGattDescriptor descriptor;
+        final byte[] value;
+        final String charUuid;
+
+        CccdWrite(BluetoothGattDescriptor descriptor, byte[] value, String charUuid) {
+            this.descriptor = descriptor;
+            this.value = value;
+            this.charUuid = charUuid;
+        }
+    }
+
+    public void resubscribe() {
+        if (gatt != null && connected) {
+            subscribeAll(gatt);
+        }
+    }
+
+    private void onData(String charUuid, byte[] value) {
+        bytesReceived += value.length;
+        lastData = new String(value, StandardCharsets.UTF_8).trim();
+        if (lastData.length() > 80) {
+            lastData = lastData.substring(0, 80) + "…";
+        }
+        for (GattCharInfo info : charInfos) {
+            if (info.charUuid.equals(charUuid)) {
+                info.bytes += value.length;
+            }
+        }
+        setStep(STEP_DATA, STATE_OK, "已收 " + bytesReceived + " 字节");
+        callback.onDiagnosticsChanged();
+        main.post(() -> callback.onData(value, value.length));
+    }
+
+    // ------------------------------------------------------------ SPP
     private void connectSpp(DeviceItem item) {
+        setStep(STEP_CONNECT, STATE_PENDING, "经典蓝牙连接中…");
         postStatus("正在连接经典蓝牙: " + item.name, false);
         postLog("SPP connect → " + item.address);
         sppRunning = true;
@@ -433,9 +787,8 @@ public final class BtLink {
                     s = (BluetoothSocket) m.invoke(item.device, 1);
                     s.connect();
                 } catch (Exception second) {
-                    postLog("经典蓝牙连接失败: " + second.getMessage());
-                    postStatus("经典蓝牙连接失败，请确认已配对且模块未连其他设备", false);
-                    maybeReconnect();
+                    fail(STEP_CONNECT, "经典蓝牙连接失败: " + second.getMessage());
+                    postStatus("经典蓝牙连接失败", false);
                     return;
                 }
             }
@@ -446,8 +799,12 @@ public final class BtLink {
             socket = s;
             connected = true;
             main.post(() -> {
+                setStep(STEP_CONNECT, STATE_OK, "SPP 已连接");
+                setStep(STEP_DISCOVER, STATE_OK, "经典蓝牙无需发现");
+                setStep(STEP_SUBSCRIBE, STATE_OK, "经典蓝牙无需订阅");
                 postStatus("经典蓝牙已连接：" + item.name, true);
                 postLog("SPP 已连接");
+                callback.onDiagnosticsChanged();
             });
             readSpp(s);
         }, "spp-connect").start();
@@ -463,7 +820,10 @@ public final class BtLink {
                     break;
                 }
                 if (n > 0) {
-                    emit(Arrays.copyOf(buf, n));
+                    byte[] copy = Arrays.copyOf(buf, n);
+                    bytesReceived += n;
+                    setStep(STEP_DATA, STATE_OK, "已收 " + bytesReceived + " 字节");
+                    main.post(() -> callback.onData(copy, copy.length));
                 }
             }
         } catch (IOException e) {
@@ -478,7 +838,7 @@ public final class BtLink {
             main.post(() -> {
                 postStatus("经典蓝牙已断开", false);
                 if (wasConnected) {
-                    postLog("SPP 链路断开");
+                    setStep(STEP_CONNECT, STATE_FAIL, "链路断开");
                 }
             });
             maybeReconnect();
@@ -489,37 +849,67 @@ public final class BtLink {
         if (connected || manualDisconnect || released || lastDevice == null) {
             return;
         }
-        if (reconnectAttempts >= 2) {
+        if (reconnectAttempts >= 3) {
             return;
         }
         reconnectAttempts++;
-        postLog("2 秒后尝试重连（第 " + reconnectAttempts + " 次）…");
+        long delay = 2000L << (reconnectAttempts - 1);
+        postLog(delay / 1000 + " 秒后自动重连（第 " + reconnectAttempts + " 次）");
         main.postDelayed(() -> {
             if (!connected && lastDevice != null && !released && !manualDisconnect) {
-                connect(lastMode, lastDevice);
+                connect(mode, lastDevice);
             }
-        }, 2000);
+        }, delay);
     }
 
-    private int lastMode = MODE_SPP;
-
-    public void setMode(int mode) {
-        lastMode = mode;
+    private void registerBondReceiver() {
+        if (bondReceiverRegistered) {
+            return;
+        }
+        IntentFilter f = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+        context.registerReceiver(bondReceiver, f);
+        bondReceiverRegistered = true;
     }
 
-    // ------------------------------------------------------------ 数据发送
+    private void unregisterBondReceiver() {
+        if (bondReceiverRegistered) {
+            try {
+                context.unregisterReceiver(bondReceiver);
+            } catch (Exception ignored) {
+            }
+            bondReceiverRegistered = false;
+        }
+    }
+
+    // ------------------------------------------------------------ 发送 / 断开
     public void send(String text) {
+        send(text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public void sendHex(String hex) {
+        String clean = hex.replaceAll("[^0-9a-fA-F]", "");
+        if (clean.length() % 2 != 0) {
+            postLog("HEX 长度必须是偶数");
+            return;
+        }
+        byte[] out = new byte[clean.length() / 2];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = (byte) Integer.parseInt(clean.substring(i * 2, i * 2 + 2), 16);
+        }
+        send(out);
+    }
+
+    private void send(byte[] bytes) {
         if (!connected) {
             postLog("未连接，无法发送");
             return;
         }
-        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
         if (socket != null) {
             try {
                 OutputStream out = socket.getOutputStream();
                 out.write(bytes);
                 out.flush();
-                postLog("已发送: " + text);
+                postLog("已发送 " + bytes.length + " 字节");
             } catch (IOException e) {
                 postLog("发送失败: " + e.getMessage());
             }
@@ -534,7 +924,7 @@ public final class BtLink {
                     writeChar.setValue(bytes);
                     gatt.writeCharacteristic(writeChar);
                 }
-                postLog("已发送: " + text);
+                postLog("已发送 " + bytes.length + " 字节 → " + writeChar.getUuid());
             } catch (SecurityException e) {
                 postLog("发送失败（权限）: " + e.getMessage());
             }
@@ -543,46 +933,22 @@ public final class BtLink {
         }
     }
 
-    // ------------------------------------------------------------ 断开/释放
     public void disconnect() {
         manualDisconnect = true;
         sppRunning = false;
         connected = false;
         closeQuietly(socket);
         socket = null;
-        if (gatt != null) {
-            try {
-                gatt.disconnect();
-                gatt.close();
-            } catch (Exception ignored) {
-            }
-            gatt = null;
-        }
-        pendingDescs.clear();
-        writeChar = null;
-        subscribed = 0;
+        closeGatt();
+        unregisterBondReceiver();
+        setStep(STEP_CONNECT, STATE_PENDING, "已断开");
+        postStatus("蓝牙未连接", false);
     }
 
     public void release() {
         released = true;
         stopScan();
         disconnect();
-    }
-
-    private void emit(byte[] data) {
-        if (released) {
-            return;
-        }
-        main.post(() -> callback.onData(data, data.length));
-    }
-
-    private void closeQuietly(BluetoothSocket s) {
-        if (s != null) {
-            try {
-                s.close();
-            } catch (IOException ignored) {
-            }
-        }
     }
 
     private void postStatus(String text, boolean isConnected) {
@@ -597,6 +963,10 @@ public final class BtLink {
     private void postDevices(List<DeviceItem> items) {
         List<DeviceItem> sorted = new ArrayList<>(items);
         Collections.sort(sorted, (a, b) -> {
+            if (lastDevice != null && !a.address.equals(b.address)) {
+                if (a.address.equals(lastDevice.address)) return -1;
+                if (b.address.equals(lastDevice.address)) return 1;
+            }
             if (a.bonded != b.bonded) {
                 return a.bonded ? -1 : 1;
             }
@@ -624,5 +994,18 @@ public final class BtLink {
         } catch (SecurityException e) {
             return "";
         }
+    }
+
+    private void closeQuietly(BluetoothSocket s) {
+        if (s != null) {
+            try {
+                s.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    public static String formatBytes(long v) {
+        return String.format(Locale.US, "%d B", v);
     }
 }
