@@ -641,6 +641,11 @@ public final class BtLink {
                 onData(ch.getUuid().toString(), value);
             }
         }
+
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic ch, int status) {
+            postLog("写入完成 status=" + status + " " + ch.getUuid());
+        }
     };
 
     private void discover(BluetoothGatt g) {
@@ -935,14 +940,17 @@ public final class BtLink {
         }
         if (gatt != null && writeChar != null) {
             try {
+                boolean ok;
                 if (Build.VERSION.SDK_INT >= 33) {
-                    gatt.writeCharacteristic(writeChar, bytes,
+                    int rc = gatt.writeCharacteristic(writeChar, bytes,
                             BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                    ok = rc == android.bluetooth.BluetoothStatusCodes.SUCCESS;
                 } else {
                     writeChar.setValue(bytes);
-                    gatt.writeCharacteristic(writeChar);
+                    ok = gatt.writeCharacteristic(writeChar);
                 }
-                postLog("已发送 " + bytes.length + " 字节 → " + writeChar.getUuid());
+                postLog("已提交 " + bytes.length + " 字节 → " + writeChar.getUuid()
+                        + "，writeCharacteristic=" + ok);
             } catch (SecurityException e) {
                 postLog("发送失败（权限）: " + e.getMessage());
             }
