@@ -187,6 +187,7 @@ public final class BtLink {
     private static final class PendingSpinner {
         final byte[] tx;
         final SpinnerCallback callback;
+        final boolean generic;
         final SpinnerProtocol.Parser parser = new SpinnerProtocol.Parser();
         final ByteArrayOutputStream rx = new ByteArrayOutputStream();
         int attempt;
@@ -197,9 +198,10 @@ public final class BtLink {
         Runnable retry;
         Runnable timeout;
 
-        PendingSpinner(byte[] tx, SpinnerCallback callback) {
+        PendingSpinner(byte[] tx, SpinnerCallback callback, boolean generic) {
             this.tx = tx;
             this.callback = callback;
+            this.generic = generic;
         }
     }
 
@@ -964,10 +966,18 @@ public final class BtLink {
         if (payload == null || payload.length == 0) {
             return;
         }
-        main.post(() -> startSpinner(payload.clone(), callback));
+        main.post(() -> startSpinner(payload.clone(), callback, false));
     }
 
-    private void startSpinner(byte[] payload, SpinnerCallback callback) {
+    /** 通用指令：同样等待回包，但不要求必须是 Txx OK/DEL OK。 */
+    public void sendCommand(byte[] payload, SpinnerCallback callback) {
+        if (payload == null || payload.length == 0) {
+            return;
+        }
+        main.post(() -> startSpinner(payload.clone(), callback, true));
+    }
+
+    private void startSpinner(byte[] payload, SpinnerCallback callback, boolean generic) {
         if (pendingSpinner != null) {
             if (callback != null) {
                 callback.onResult(false, "上一条指令还在等待回包", payload, new byte[0], 0, -1);
@@ -981,7 +991,7 @@ public final class BtLink {
             }
             return;
         }
-        PendingSpinner p = new PendingSpinner(payload, callback);
+        PendingSpinner p = new PendingSpinner(payload, callback, generic);
         pendingSpinner = p;
         postLog("陀螺 TX " + SpinnerProtocol.hex(p.tx) + "  「"
                 + SpinnerProtocol.decode(p.tx).replace("\r", "\\r").replace("\n", "\\n") + "」");
@@ -1044,8 +1054,12 @@ public final class BtLink {
             if (pendingSpinner == p && !p.finished) {
                 java.util.List<SpinnerProtocol.Reply> rest = p.parser.flush();
                 if (!rest.isEmpty()) {
-                    finishSpinner(p, rest.get(0).ok, rest.get(0).text, p.lastWriteType,
-                            p.lastStatus);
+                    String text = joinReplies(rest);
+                    finishSpinner(p, p.generic || rest.get(0).ok, text,
+                            p.lastWriteType, p.lastStatus);
+                } else if (p.generic && p.rx.size() > 0) {
+                    finishSpinner(p, true, SpinnerProtocol.decode(p.rx.toByteArray()).trim(),
+                            p.lastWriteType, p.lastStatus);
                 } else {
                     finishSpinner(p, false,
                             "超时：未收到回包（已尝试 Write Request / No-Response / Read FFE1）",
@@ -1092,9 +1106,24 @@ public final class BtLink {
         postLog("陀螺 RX(" + source + ") " + SpinnerProtocol.hex(value));
         java.util.List<SpinnerProtocol.Reply> replies = p.parser.feed(value);
         if (!replies.isEmpty()) {
-            SpinnerProtocol.Reply first = replies.get(0);
-            finishSpinner(p, first.ok, first.text, p.lastWriteType, p.lastStatus);
+            if (p.generic) {
+                finishSpinner(p, true, joinReplies(replies), p.lastWriteType, p.lastStatus);
+            } else {
+                SpinnerProtocol.Reply first = replies.get(0);
+                finishSpinner(p, first.ok, first.text, p.lastWriteType, p.lastStatus);
+            }
         }
+    }
+
+    private static String joinReplies(java.util.List<SpinnerProtocol.Reply> replies) {
+        StringBuilder sb = new StringBuilder();
+        for (SpinnerProtocol.Reply r : replies) {
+            if (sb.length() > 0) {
+                sb.append('\n');
+            }
+            sb.append(r.text);
+        }
+        return sb.toString();
     }
 
     private void cancelSpinnerTimers(PendingSpinner p) {

@@ -850,34 +850,139 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showSendDialog() {
-        LinearLayout wrap = new LinearLayout(this);
-        wrap.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(16);
-        wrap.setPadding(pad, pad / 2, pad, 0);
-        EditText et = new EditText(this);
-        et.setHint("文本指令，例如 AT 或 \\r\\n");
+        box.setPadding(pad, pad / 2, pad, pad / 2);
+
+        final EditText et = new EditText(this);
+        et.setHint("文本指令，例如 AT 或 T01=1234567");
         et.setSingleLine(true);
-        CheckBox hex = new CheckBox(this);
+        box.addView(et);
+
+        final CheckBox hex = new CheckBox(this);
         hex.setText("按 HEX 发送（如 0D0A）");
-        wrap.addView(et);
-        wrap.addView(hex);
-        new AlertDialog.Builder(this)
+        box.addView(hex);
+
+        final boolean[] appendCrlf = {true};
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+
+        final Button crlfBtn = new Button(this);
+        crlfBtn.setText("回车：开");
+        crlfBtn.setTextSize(11);
+        crlfBtn.setMinWidth(0);
+        crlfBtn.setPadding(dp(8), 0, dp(8), 0);
+        row.addView(crlfBtn);
+
+        Button send = new Button(this);
+        send.setText("发送");
+        send.setTextSize(11);
+        send.setMinWidth(0);
+        send.setPadding(dp(8), 0, dp(8), 0);
+        row.addView(send);
+
+        Button clear = new Button(this);
+        clear.setText("清空结果");
+        clear.setTextSize(11);
+        clear.setMinWidth(0);
+        clear.setPadding(dp(8), 0, dp(8), 0);
+        row.addView(clear);
+        box.addView(row);
+
+        final TextView result = new TextView(this);
+        result.setTextSize(11);
+        result.setTypeface(Typeface.MONOSPACE);
+        result.setTextColor(0xFF263238);
+        result.setText("等待发送…");
+        ScrollView resultScroll = new ScrollView(this);
+        resultScroll.setPadding(0, dp(8), 0, 0);
+        resultScroll.addView(result);
+        resultScroll.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(170)));
+        box.addView(resultScroll);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("发送给蓝牙模块")
-                .setView(wrap)
-                .setPositiveButton("发送", (d, w) -> {
-                    String s = et.getText().toString().replace("\\r", "\r").replace("\\n", "\n");
-                    if (s.isEmpty()) {
+                .setView(scroll)
+                .setNegativeButton("关闭", null)
+                .create();
+
+        crlfBtn.setOnClickListener(v -> {
+            appendCrlf[0] = !appendCrlf[0];
+            crlfBtn.setText(appendCrlf[0] ? "回车：开" : "回车：关");
+            result.append("\n回车追加：" + (appendCrlf[0] ? "开" : "关") + "\n");
+        });
+
+        clear.setOnClickListener(v -> result.setText("等待发送…"));
+
+        final BtLink.SpinnerCallback cb = (ok, message, tx, rx, writeType, writeStatus) ->
+                runOnUiThread(() -> {
+                    String now = new java.text.SimpleDateFormat("HH:mm:ss",
+                            Locale.US).format(new java.util.Date());
+                    result.append("[" + now + "] " + (ok ? "收到回包" : "失败") + "\n");
+                    result.append("TX " + SpinnerProtocol.hex(tx) + "  「"
+                            + SpinnerProtocol.decode(tx).trim() + "」\n");
+                    result.append("RX " + SpinnerProtocol.hex(rx) + "  「"
+                            + SpinnerProtocol.decode(rx).trim() + "」\n");
+                    result.append(message + "  (writeType=" + writeType
+                            + ", status=" + writeStatus + ")\n\n");
+                });
+
+        send.setOnClickListener(v -> {
+            String raw = et.getText().toString();
+            byte[] body;
+            try {
+                if (hex.isChecked()) {
+                    String clean = raw.replaceAll("[^0-9a-fA-F]", "");
+                    if (clean.length() % 2 != 0) {
+                        toast("HEX 长度必须是偶数");
                         return;
                     }
-                    if (hex.isChecked()) {
-                        bt.sendHex(s);
-                    } else {
-                        bt.send(s);
+                    body = new byte[clean.length() / 2];
+                    for (int i = 0; i < body.length; i++) {
+                        body[i] = (byte) Integer.parseInt(
+                                clean.substring(i * 2, i * 2 + 2), 16);
                     }
-                    addLog("发送: " + (hex.isChecked() ? "HEX " + s : s));
-                })
-                .setNegativeButton("取消", null)
-                .show();
+                } else {
+                    String text = raw.replace("\\r", "\r").replace("\\n", "\n");
+                    body = text.getBytes(SpinnerProtocol.GB2312);
+                }
+            } catch (Exception e) {
+                toast("指令格式不对: " + e.getMessage());
+                return;
+            }
+            if (appendCrlf[0] && !endsWithCrlf(body)) {
+                byte[] merged = java.util.Arrays.copyOf(body, body.length + 2);
+                merged[body.length] = 0x0D;
+                merged[body.length + 1] = 0x0A;
+                body = merged;
+            }
+            if (body.length == 0) {
+                toast("请输入指令");
+                return;
+            }
+            result.append("\n→ TX " + SpinnerProtocol.hex(body) + "，等待回包…\n");
+            bt.sendCommand(body, cb);
+        });
+
+        send.setOnLongClickListener(v -> {
+            et.setText("T01=1234567");
+            hex.setChecked(false);
+            appendCrlf[0] = true;
+            crlfBtn.setText("回车：开");
+            return true;
+        });
+
+        dialog.show();
+    }
+
+    private static boolean endsWithCrlf(byte[] data) {
+        return data.length >= 2 && data[data.length - 2] == 0x0D
+                && data[data.length - 1] == 0x0A;
     }
 
     private void showSpinnerDialog() {
@@ -1013,7 +1118,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "中国地图蓝牙轨迹  v1.2.2\n\n"
+        String msg = "中国地图蓝牙轨迹  v1.2.3\n\n"
                 + "· 标准底图内置到县级（GCJ-02），完全离线\n"
                 + "· 街道/卫星/卫星+路网/地形为在线瓦片，需要网络\n"
                 + "· 输入坐标系可选：GCJ-02 / WGS-84 / BD-09 / CGCS2000\n"
