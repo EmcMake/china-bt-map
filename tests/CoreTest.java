@@ -1,4 +1,5 @@
 import com.btmap.china.map.MapData;
+import com.btmap.china.bt.SpinnerProtocol;
 import com.btmap.china.map.TileMath;
 import com.btmap.china.map.TileSource;
 import com.btmap.china.map.Mercator;
@@ -33,6 +34,7 @@ public final class CoreTest {
         testMapData(root);
         testTileMath();
         testWgsConversion();
+        testSpinnerProtocol();
 
         System.out.println();
         System.out.println("通过 " + passed + " 项，失败 " + failures.size() + " 项");
@@ -245,6 +247,47 @@ public final class CoreTest {
         check("最后一点", last != null && Math.abs(last[0] - 39.9050) < 1e-9);
         store.clear();
         check("清空后 dropped=0", store.droppedCount() == 0 && store.size() == 0);
+    }
+
+    private static void testSpinnerProtocol() {
+        byte[] t01 = SpinnerProtocol.encodeFrame(1, "1234567");
+        check("T01 13 字节 (" + t01.length + ")", t01.length == 13);
+        check("T01 hex", SpinnerProtocol.hex(t01)
+                .equals("5430313D313233343536370D0A"));
+        check("T01 解码", SpinnerProtocol.decode(t01).equals("T01=1234567\r\n"));
+
+        byte[] t02 = SpinnerProtocol.encodeFrame(2, "实例");
+        check("T02 GB2312 头", SpinnerProtocol.hex(t02).startsWith("5430323D"));
+        check("T02 解码", SpinnerProtocol.decode(t02).equals("T02=实例\r\n"));
+
+        byte[] del = SpinnerProtocol.encodeDelAll();
+        check("DEL ALL hex", SpinnerProtocol.hex(del).equals("44454C20414C4C0D0A"));
+
+        boolean tooLong = false;
+        try {
+            SpinnerProtocol.encodeFrame(1, "123456789012345678901");
+        } catch (IllegalArgumentException e) {
+            tooLong = true;
+        }
+        check("超过 20 字拒绝", tooLong);
+
+        boolean newline = false;
+        try {
+            SpinnerProtocol.encodeFrame(1, "a\nb");
+        } catch (IllegalArgumentException e) {
+            newline = true;
+        }
+        check("换行拒绝", newline);
+
+        SpinnerProtocol.Parser parser = new SpinnerProtocol.Parser();
+        check("半包无响应", parser.feed("T01 OK\r".getBytes(SpinnerProtocol.GB2312)).isEmpty());
+        java.util.List<SpinnerProtocol.Reply> replies = parser.feed(
+                "\nT02 OK\r\n".getBytes(SpinnerProtocol.GB2312));
+        check("半包续传 2 条 (" + replies.size() + ")", replies.size() == 2);
+        check("T01 OK", replies.get(0).ok && replies.get(0).frame == 1);
+        check("T02 OK", replies.get(1).ok && replies.get(1).frame == 2);
+        check("DEL OK", SpinnerProtocol.parseLine("DEL OK").ok);
+        check("错误行", !SpinnerProtocol.parseLine("T01 ERR").ok);
     }
 
     private static void testTileMath() {

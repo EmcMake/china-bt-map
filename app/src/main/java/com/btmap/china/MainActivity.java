@@ -21,6 +21,7 @@ import android.text.InputType;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -30,10 +31,12 @@ import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.btmap.china.bt.BtLink;
+import com.btmap.china.bt.SpinnerProtocol;
 import com.btmap.china.map.ChinaMapView;
 import com.btmap.china.map.TileSource;
 import com.btmap.china.track.CoordParser;
@@ -598,6 +601,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         items.add(logVisible ? "隐藏日志面板" : "显示日志面板");
         items.add("蓝牙诊断");
         items.add("向模块发送指令…");
+        items.add("指尖陀螺（用户模式）…");
         items.add("地图显示…");
         if (connected) {
             items.add("断开蓝牙连接");
@@ -624,6 +628,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
                         showDiagnostics();
                     } else if (label.startsWith("向模块发送")) {
                         showSendDialog();
+                    } else if (label.startsWith("指尖陀螺")) {
+                        showSpinnerDialog();
                     } else if (label.startsWith("地图显示")) {
                         showMapDisplayDialog();
                     } else if (label.startsWith("断开蓝牙")) {
@@ -874,8 +880,140 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 .show();
     }
 
+    private void showSpinnerDialog() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
+        box.setPadding(pad, pad / 2, pad, pad / 2);
+
+        TextView status = new TextView(this);
+        status.setTextSize(12);
+        status.setTextColor(0xFF546E7A);
+        status.setText(bt.isConnected()
+                ? (bt.isSpinnerReady() ? "已连接，FFE1 通知已订阅"
+                : "已连接，等待服务/订阅完成…")
+                : "未连接：请先在“连接设备”里连接陀螺（BLE）");
+        box.addView(status);
+
+        TextView frameLabel = new TextView(this);
+        frameLabel.setText("幅号（1-20，每幅最多 20 个字，GB2312）");
+        frameLabel.setTextSize(12);
+        frameLabel.setPadding(0, dp(10), 0, dp(4));
+        box.addView(frameLabel);
+
+        final Spinner frame = new Spinner(this);
+        String[] frames = new String[SpinnerProtocol.MAX_FRAMES];
+        for (int i = 0; i < frames.length; i++) {
+            frames[i] = "第 " + (i + 1) + " 幅";
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, frames);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        frame.setAdapter(adapter);
+        box.addView(frame);
+
+        final EditText text = new EditText(this);
+        text.setHint("例如 1234567，或 20 个以内的中文/英文");
+        text.setSingleLine(true);
+        box.addView(text);
+
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        buttons.setPadding(0, dp(8), 0, 0);
+
+        Button send = new Button(this);
+        send.setText("发送本幅");
+        send.setTextSize(11);
+        send.setMinWidth(0);
+        send.setPadding(dp(8), 0, dp(8), 0);
+        buttons.addView(send);
+
+        Button test = new Button(this);
+        test.setText("测试 T01");
+        test.setTextSize(11);
+        test.setMinWidth(0);
+        test.setPadding(dp(8), 0, dp(8), 0);
+        buttons.addView(test);
+
+        Button del = new Button(this);
+        del.setText("DEL ALL");
+        del.setTextSize(11);
+        del.setMinWidth(0);
+        del.setPadding(dp(8), 0, dp(8), 0);
+        buttons.addView(del);
+        box.addView(buttons);
+
+        TextView result = new TextView(this);
+        result.setTextSize(11);
+        result.setTypeface(Typeface.MONOSPACE);
+        result.setTextColor(0xFF263238);
+        result.setText("等待指令…");
+        ScrollView resultScroll = new ScrollView(this);
+        resultScroll.setPadding(0, dp(8), 0, 0);
+        resultScroll.addView(result);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(170));
+        resultScroll.setLayoutParams(rlp);
+        box.addView(resultScroll);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("指尖陀螺（用户模式，红灯）")
+                .setView(scroll)
+                .setNegativeButton("关闭", null)
+                .create();
+
+        final BtLink.SpinnerCallback cb = (ok, message, tx, rx, writeType, writeStatus) ->
+                runOnUiThread(() -> {
+                    String now = new java.text.SimpleDateFormat("HH:mm:ss",
+                            Locale.US).format(new java.util.Date());
+                    result.append("[" + now + "] " + (ok ? "成功" : "失败") + "\n");
+                    result.append("TX " + SpinnerProtocol.hex(tx) + "  「"
+                            + SpinnerProtocol.decode(tx).trim() + "」\n");
+                    result.append("RX " + SpinnerProtocol.hex(rx) + "  「"
+                            + SpinnerProtocol.decode(rx).trim() + "」\n");
+                    result.append(message + "  (writeType=" + writeType
+                            + ", status=" + writeStatus + ")\n\n");
+                    status.setText(bt.isSpinnerReady()
+                            ? "已连接，FFE1 通知已订阅"
+                            : "连接/订阅已断开");
+                });
+
+        send.setOnClickListener(v -> {
+            int index = frame.getSelectedItemPosition() + 1;
+            try {
+                byte[] payload = SpinnerProtocol.encodeFrame(index,
+                        text.getText().toString());
+                result.append("\n→ 第 " + index + " 幅，等待回包…\n");
+                bt.sendSpinner(payload, cb);
+            } catch (IllegalArgumentException e) {
+                toast(e.getMessage());
+            }
+        });
+
+        test.setOnClickListener(v -> {
+            frame.setSelection(0);
+            text.setText("1234567");
+            try {
+                result.append("\n→ 测试 T01=1234567，等待回包…\n");
+                bt.sendSpinner(SpinnerProtocol.encodeFrame(1, "1234567"), cb);
+            } catch (IllegalArgumentException e) {
+                toast(e.getMessage());
+            }
+        });
+
+        del.setOnClickListener(v -> {
+            result.append("\n→ DEL ALL，等待回包…\n");
+            bt.sendSpinner(SpinnerProtocol.encodeDelAll(), cb);
+        });
+
+        dialog.show();
+    }
+
     private void showAbout() {
-        String msg = "中国地图蓝牙轨迹  v1.2.1\n\n"
+        String msg = "中国地图蓝牙轨迹  v1.2.2\n\n"
                 + "· 标准底图内置到县级（GCJ-02），完全离线\n"
                 + "· 街道/卫星/卫星+路网/地形为在线瓦片，需要网络\n"
                 + "· 输入坐标系可选：GCJ-02 / WGS-84 / BD-09 / CGCS2000\n"

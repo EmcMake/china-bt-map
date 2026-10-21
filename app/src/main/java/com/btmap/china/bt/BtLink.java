@@ -23,6 +23,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -77,6 +78,12 @@ public final class BtLink {
         void onScanState(String text);
 
         void onDiagnosticsChanged();
+    }
+
+    /** 指尖陀螺单条指令的结果回调（主线程）。 */
+    public interface SpinnerCallback {
+        void onResult(boolean ok, String message, byte[] tx, byte[] rx,
+                      int writeType, int status);
     }
 
     public static final class DeviceItem {
@@ -174,6 +181,27 @@ public final class BtLink {
     private boolean released;
     private boolean discovering;
     private int mtu;
+
+    private PendingSpinner pendingSpinner;
+
+    private static final class PendingSpinner {
+        final byte[] tx;
+        final SpinnerCallback callback;
+        final SpinnerProtocol.Parser parser = new SpinnerProtocol.Parser();
+        final ByteArrayOutputStream rx = new ByteArrayOutputStream();
+        int attempt;
+        int lastStatus = -1;
+        int lastWriteType;
+        boolean finished;
+        Runnable probe;
+        Runnable retry;
+        Runnable timeout;
+
+        PendingSpinner(byte[] tx, SpinnerCallback callback) {
+            this.tx = tx;
+            this.callback = callback;
+        }
+    }
 
     private final int[] stepState = new int[STEPS.length];
     private final String[] stepDetail = new String[STEPS.length];
@@ -629,6 +657,7 @@ public final class BtLink {
         @Override
         public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic ch, byte[] value) {
             if (value != null && value.length > 0) {
+                handleSpinnerBytes(value, "notify");
                 onData(ch.getUuid().toString(), value);
             }
         }
@@ -638,7 +667,29 @@ public final class BtLink {
         public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic ch) {
             byte[] value = ch.getValue();
             if (value != null && value.length > 0) {
+                handleSpinnerBytes(value, "notify");
                 onData(ch.getUuid().toString(), value);
+            }
+        }
+
+        @Override
+        public void onCharacteristicRead(BluetoothGatt g, BluetoothGattCharacteristic ch,
+                                         byte[] value, int status) {
+            postLog("读取完成 status=" + status + " " + ch.getUuid()
+                    + " " + SpinnerProtocol.hex(value));
+            if (status == BluetoothGatt.GATT_SUCCESS && value != null && value.length > 0) {
+                handleSpinnerBytes(value, "read");
+            }
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public void onCharacteristicRead(BluetoothGatt g, BluetoothGattCharacteristic ch, int status) {
+            byte[] value = ch.getValue();
+            postLog("读取完成 status=" + status + " " + ch.getUuid()
+                    + " " + SpinnerProtocol.hex(value));
+            if (status == BluetoothGatt.GATT_SUCCESS && value != null && value.length > 0) {
+                handleSpinnerBytes(value, "read");
             }
         }
 
@@ -736,12 +787,6 @@ public final class BtLink {
         for (GattCharInfo info : charInfos) {
             info.subscribed = info.notifiable();
         }
-        if (gatt != null && connected) {
-            try {
-                gatt.requestMtu(247);
-            } catch (Exception ignored) {
-            }
-        }
         if (subscribed > 0) {
             setStep(STEP_SUBSCRIBE, STATE_OK, "已订阅 " + subscribed + " 个特征");
             postStatus("BLE 已连接：" + (lastDevice == null ? "" : lastDevice.name)
@@ -775,7 +820,7 @@ public final class BtLink {
 
     private void onData(String charUuid, byte[] value) {
         bytesReceived += value.length;
-        lastData = new String(value, StandardCharsets.UTF_8).trim();
+        lastData = new String(value, SpinnerProtocol.GB2312).trim();
         if (lastData.length() > 80) {
             lastData = lastData.substring(0, 80) + "…";
         }
@@ -905,6 +950,186 @@ public final class BtLink {
     }
 
     // ------------------------------------------------------------ 发送 / 断开
+    /** 已连接、已发现服务、CCCD 已订阅成功，才允许发陀螺指令。 */
+    public boolean isSpinnerReady() {
+        return connected && gatt != null && writeChar != null && subscribed > 0;
+    }
+
+    /**
+     * 发送一条指尖陀螺指令，等待 Txx OK / DEL OK 回包。
+     * 先使用 Write Request；无回包时自动改用 Write Without Response 重试，
+     * 并在中途尝试读取 FFE1（部分固件把回包放在可读特征里）。
+     */
+    public void sendSpinner(byte[] payload, SpinnerCallback callback) {
+        if (payload == null || payload.length == 0) {
+            return;
+        }
+        main.post(() -> startSpinner(payload.clone(), callback));
+    }
+
+    private void startSpinner(byte[] payload, SpinnerCallback callback) {
+        if (pendingSpinner != null) {
+            if (callback != null) {
+                callback.onResult(false, "上一条指令还在等待回包", payload, new byte[0], 0, -1);
+            }
+            return;
+        }
+        if (!connected || gatt == null || writeChar == null || subscribed <= 0) {
+            if (callback != null) {
+                callback.onResult(false, "蓝牙未连接或 FFE1 通知尚未订阅", payload,
+                        new byte[0], 0, -1);
+            }
+            return;
+        }
+        PendingSpinner p = new PendingSpinner(payload, callback);
+        pendingSpinner = p;
+        postLog("陀螺 TX " + SpinnerProtocol.hex(p.tx) + "  「"
+                + SpinnerProtocol.decode(p.tx).replace("\r", "\\r").replace("\n", "\\n") + "」");
+        writeSpinner(p, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+    }
+
+    private void writeSpinner(PendingSpinner p, int writeType) {
+        if (pendingSpinner != p || p.finished) {
+            return;
+        }
+        cancelSpinnerTimers(p);
+        p.lastWriteType = writeType;
+        try {
+            boolean ok;
+            if (Build.VERSION.SDK_INT >= 33) {
+                int rc = gatt.writeCharacteristic(writeChar, p.tx, writeType);
+                ok = rc == android.bluetooth.BluetoothStatusCodes.SUCCESS;
+                p.lastStatus = rc;
+            } else {
+                writeChar.setWriteType(writeType);
+                writeChar.setValue(p.tx);
+                ok = gatt.writeCharacteristic(writeChar);
+                p.lastStatus = ok ? BluetoothGatt.GATT_SUCCESS : -1;
+            }
+            postLog("陀螺写入 writeType=" + writeType + " ok=" + ok
+                    + " status=" + p.lastStatus);
+            if (!ok && writeType == BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    && p.attempt == 0) {
+                p.retry = () -> {
+                    if (pendingSpinner == p && !p.finished && p.rx.size() == 0) {
+                        p.attempt = 1;
+                        writeSpinner(p, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                    }
+                };
+                main.postDelayed(p.retry, 250);
+                return;
+            }
+        } catch (SecurityException e) {
+            finishSpinner(p, false, "发送失败（权限）: " + e.getMessage(), p.lastWriteType,
+                    p.lastStatus);
+            return;
+        }
+
+        p.probe = () -> {
+            if (pendingSpinner == p && !p.finished && p.rx.size() == 0) {
+                readSpinner(p);
+            }
+        };
+        main.postDelayed(p.probe, 350);
+
+        p.retry = () -> {
+            if (pendingSpinner == p && !p.finished && p.rx.size() == 0 && p.attempt == 0) {
+                p.attempt = 1;
+                writeSpinner(p, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+            }
+        };
+        main.postDelayed(p.retry, 1200);
+
+        p.timeout = () -> {
+            if (pendingSpinner == p && !p.finished) {
+                java.util.List<SpinnerProtocol.Reply> rest = p.parser.flush();
+                if (!rest.isEmpty()) {
+                    finishSpinner(p, rest.get(0).ok, rest.get(0).text, p.lastWriteType,
+                            p.lastStatus);
+                } else {
+                    finishSpinner(p, false,
+                            "超时：未收到回包（已尝试 Write Request / No-Response / Read FFE1）",
+                            p.lastWriteType, p.lastStatus);
+                }
+            }
+        };
+        main.postDelayed(p.timeout, 3000);
+    }
+
+    private void readSpinner(PendingSpinner p) {
+        if (gatt == null || writeChar == null) {
+            return;
+        }
+        if ((writeChar.getProperties() & BluetoothGattCharacteristic.PROPERTY_READ) == 0) {
+            return;
+        }
+        try {
+            boolean ok = gatt.readCharacteristic(writeChar);
+            postLog("陀螺读取 FFE1 → " + ok);
+        } catch (SecurityException e) {
+            postLog("陀螺读取失败（权限）: " + e.getMessage());
+        }
+    }
+
+    private void handleSpinnerBytes(byte[] value, String source) {
+        if (value == null || value.length == 0) {
+            return;
+        }
+        byte[] copy = value.clone();
+        main.post(() -> consumeSpinner(copy, source));
+    }
+
+    private void consumeSpinner(byte[] value, String source) {
+        PendingSpinner p = pendingSpinner;
+        if (p == null || p.finished) {
+            return;
+        }
+        if ("read".equals(source) && Arrays.equals(value, p.tx)) {
+            postLog("陀螺读取到的是刚写入的命令，忽略");
+            return;
+        }
+        p.rx.write(value, 0, value.length);
+        postLog("陀螺 RX(" + source + ") " + SpinnerProtocol.hex(value));
+        java.util.List<SpinnerProtocol.Reply> replies = p.parser.feed(value);
+        if (!replies.isEmpty()) {
+            SpinnerProtocol.Reply first = replies.get(0);
+            finishSpinner(p, first.ok, first.text, p.lastWriteType, p.lastStatus);
+        }
+    }
+
+    private void cancelSpinnerTimers(PendingSpinner p) {
+        if (p.probe != null) {
+            main.removeCallbacks(p.probe);
+            p.probe = null;
+        }
+        if (p.retry != null) {
+            main.removeCallbacks(p.retry);
+            p.retry = null;
+        }
+        if (p.timeout != null) {
+            main.removeCallbacks(p.timeout);
+            p.timeout = null;
+        }
+    }
+
+    private void finishSpinner(PendingSpinner p, boolean ok, String message,
+                               int writeType, int status) {
+        if (p == null || p.finished) {
+            return;
+        }
+        p.finished = true;
+        cancelSpinnerTimers(p);
+        if (pendingSpinner == p) {
+            pendingSpinner = null;
+        }
+        byte[] rx = p.rx.toByteArray();
+        postLog("陀螺结果 " + (ok ? "OK" : "FAIL") + " " + message
+                + "  RX=" + SpinnerProtocol.hex(rx));
+        if (p.callback != null) {
+            p.callback.onResult(ok, message, p.tx, rx, writeType, status);
+        }
+    }
+
     public void send(String text) {
         send(text.getBytes(StandardCharsets.UTF_8));
     }
