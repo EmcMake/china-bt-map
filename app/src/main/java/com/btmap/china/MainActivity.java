@@ -9,6 +9,8 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -33,6 +35,7 @@ import android.widget.Toast;
 
 import com.btmap.china.bt.BtLink;
 import com.btmap.china.map.ChinaMapView;
+import com.btmap.china.map.TileSource;
 import com.btmap.china.track.CoordParser;
 import com.btmap.china.track.CoordSystems;
 import com.btmap.china.track.TrackStore;
@@ -51,6 +54,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private TextView coordText;
     private TextView countText;
     private TextView datumChip;
+    private TextView mapChip;
     private TextView logText;
     private ScrollView logPanel;
     private Button btnConnect;
@@ -64,11 +68,15 @@ public class MainActivity extends Activity implements BtLink.Callback {
 
     private int mode = BtLink.MODE_BLE;
     private int datum = CoordSystems.DEFAULT;
+    private int mapType = TileSource.TYPE_VECTOR;
+    private int tileProvider = TileSource.PROVIDER_ESRI;
+    private String tdtKey = "";
     private boolean connected;
     private boolean pendingConnect;
     private boolean logVisible;
 
     private boolean showCity = true;
+    private boolean showCounty = true;
     private boolean showLabels = true;
     private boolean showGrid = true;
     private boolean showAccuracy = true;
@@ -95,7 +103,11 @@ public class MainActivity extends Activity implements BtLink.Callback {
         migrateSettings();
         datum = prefs.getInt("datum", CoordSystems.DEFAULT);
         mode = prefs.getInt("mode", BtLink.MODE_BLE);
+        mapType = prefs.getInt("mapType", TileSource.TYPE_VECTOR);
+        tileProvider = prefs.getInt("tileProvider", TileSource.PROVIDER_AMAP);
+        tdtKey = prefs.getString("tdtKey", "");
         showCity = prefs.getBoolean("showCity", true);
+        showCounty = prefs.getBoolean("showCounty", true);
         showLabels = prefs.getBoolean("showLabels", true);
         showGrid = prefs.getBoolean("showGrid", true);
         showAccuracy = prefs.getBoolean("showAccuracy", true);
@@ -106,6 +118,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         coordText = findViewById(R.id.coordText);
         countText = findViewById(R.id.countText);
         datumChip = findViewById(R.id.datumChip);
+        mapChip = findViewById(R.id.mapChip);
         logPanel = findViewById(R.id.logPanel);
         logText = findViewById(R.id.logText);
         btnConnect = findViewById(R.id.btnConnect);
@@ -115,14 +128,19 @@ public class MainActivity extends Activity implements BtLink.Callback {
 
         mapView.setPickListener((lat, lon) -> showPickedCoordinate(lat, lon));
         mapView.setOnZoomLimitListener(() ->
-                toast("已到地图数据精度上限（约 10 米/像素）"));
+                toast(mapView.isRasterMode()
+                        ? "已到在线瓦片最大缩放（约 1 米/像素）"
+                        : "已到矢量底图精度上限（约 5 米/像素）"));
+        mapView.setCountyVisible(showCounty);
         applyDisplaySettings();
+        applyMapType(false);
 
         bt = new BtLink(this, this);
 
         btnConnect.setOnClickListener(v -> requestConnect());
         btnMore.setOnClickListener(v -> showMoreMenu());
         datumChip.setOnClickListener(v -> showDatumDialog());
+        mapChip.setOnClickListener(v -> showMapTypeDialog());
         findViewById(R.id.btnZoomIn).setOnClickListener(v -> mapView.zoomBy(1.8));
         findViewById(R.id.btnZoomOut).setOnClickListener(v -> mapView.zoomBy(1 / 1.8));
         findViewById(R.id.btnFit).setOnClickListener(v -> {
@@ -147,7 +165,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 coordText.setText(formatCoord(last[0], last[1]));
             }
         }
-        addLog("应用启动，内置 GCJ-02 底图；输入坐标系：" + CoordSystems.name(datum));
+        addLog("应用启动，内置 GCJ-02 省市县底图；在线街道/卫星需网络；输入坐标系："
+                + CoordSystems.name(datum));
 
         handleIntent(getIntent());
         maybeAutoConnect();
@@ -172,6 +191,15 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private void handleIntent(Intent intent) {
         if (intent == null) {
             return;
+        }
+        if (intent.hasExtra("map_type")) {
+            mapType = intent.getIntExtra("map_type", mapType);
+            if (intent.hasExtra("tile_provider")) {
+                tileProvider = intent.getIntExtra("tile_provider", tileProvider);
+            }
+            prefs.edit().putInt("mapType", mapType)
+                    .putInt("tileProvider", tileProvider).apply();
+            applyMapType(false);
         }
         String demoPoints = intent.getStringExtra("demo_points");
         boolean demo = intent.getBooleanExtra("demo", false);
@@ -562,6 +590,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
     // ------------------------------------------------------------ 菜单
     private void showMoreMenu() {
         final List<String> items = new ArrayList<>();
+        items.add("地图类型：" + TileSource.typeName(mapType));
+        items.add("地图设置（在线源 / 天地图 tk / 清缓存）");
         items.add("坐标系：" + CoordSystems.chipLabel(datum));
         items.add("演示数据（画一条示例轨迹）");
         items.add("输入测试坐标");
@@ -578,7 +608,11 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 .setTitle("更多")
                 .setItems(labels, (d, which) -> {
                     String label = labels[which];
-                    if (label.startsWith("坐标系")) {
+                    if (label.startsWith("地图类型")) {
+                        showMapTypeDialog();
+                    } else if (label.startsWith("地图设置")) {
+                        showMapSettingsDialog();
+                    } else if (label.startsWith("坐标系")) {
                         showDatumDialog();
                     } else if (label.startsWith("演示数据")) {
                         injectDemo();
@@ -602,9 +636,144 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 .show();
     }
 
+    private boolean hasNetwork() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager)
+                    getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) {
+                return false;
+            }
+            NetworkInfo info = cm.getActiveNetworkInfo();
+            return info != null && info.isConnected();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private void applyMapType(boolean announce) {
+        mapView.setMapType(mapType, tileProvider, tdtKey);
+        if (mapChip != null) {
+            mapChip.setText("地图：" + TileSource.typeName(mapType));
+        }
+        if (announce && mapType != TileSource.TYPE_VECTOR && !hasNetwork()) {
+            toast("该图层需要网络；标准底图仍可离线使用");
+        }
+    }
+
+    private void showMapTypeDialog() {
+        final String[] names = {
+                "标准（离线县界）",
+                "街道（在线）",
+                "卫星（在线）",
+                "卫星+路网（在线）",
+                "地形（在线）"
+        };
+        final int[] types = {
+                TileSource.TYPE_VECTOR,
+                TileSource.TYPE_STREET,
+                TileSource.TYPE_SATELLITE,
+                TileSource.TYPE_HYBRID,
+                TileSource.TYPE_TERRAIN
+        };
+        int checked = 0;
+        for (int i = 0; i < types.length; i++) {
+            if (types[i] == mapType) {
+                checked = i;
+            }
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("地图类型")
+                .setSingleChoiceItems(names, checked, (d, which) -> {
+                    mapType = types[which];
+                    prefs.edit().putInt("mapType", mapType).apply();
+                    applyMapType(true);
+                    d.dismiss();
+                })
+                .setNegativeButton("关闭", null)
+                .setNeutralButton("说明", (d, w) -> new AlertDialog.Builder(this)
+                        .setTitle("地图类型说明")
+                        .setMessage("标准：内置省市县边界，完全离线，约 5 米/像素。\n\n"
+                                + "街道/卫星/卫星+路网/地形：在线瓦片，需要网络；"
+                                + "卫星+路网在影像上叠加道路和地名。\n\n"
+                                + "在线瓦片会缓存到手机，已看过的区域断网也能显示。")
+                        .setPositiveButton("知道了", null)
+                        .show())
+                .show();
+    }
+
+    private void showMapSettingsDialog() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(18);
+        box.setPadding(pad, pad / 2, pad, 0);
+
+        TextView label = new TextView(this);
+        label.setText("瓦片源");
+        label.setTextSize(13);
+        label.setTextColor(0xFF37474F);
+        box.addView(label);
+
+        RadioGroup group = new RadioGroup(this);
+        group.setOrientation(RadioGroup.VERTICAL);
+        RadioButton amap = new RadioButton(this);
+        amap.setText("高德（推荐，免 key，国内道路最全）");
+        amap.setId(1001);
+        RadioButton tdt = new RadioButton(this);
+        tdt.setText("天地图（需要免费 tk，官方合规）");
+        tdt.setId(1002);
+        RadioButton esri = new RadioButton(this);
+        esri.setText("Esri（免 key，国内道路只到低缩放）");
+        esri.setId(1003);
+        group.addView(amap);
+        group.addView(tdt);
+        group.addView(esri);
+        int checkedId = tileProvider == TileSource.PROVIDER_TIANDITU ? 1002
+                : tileProvider == TileSource.PROVIDER_ESRI ? 1003 : 1001;
+        group.check(checkedId);
+        box.addView(group);
+
+        EditText key = new EditText(this);
+        key.setHint("天地图 tk（只在选天地图时使用）");
+        key.setText(tdtKey);
+        key.setSingleLine(true);
+        box.addView(key);
+
+        TextView cache = new TextView(this);
+        cache.setTextSize(12);
+        cache.setTextColor(0xFF607D8B);
+        double mb = mapView.tileCacheBytes() / 1048576.0;
+        cache.setText(String.format(Locale.US, "瓦片缓存：%.1f MB（上限约 200MB）", mb));
+        box.addView(cache);
+
+        new AlertDialog.Builder(this)
+                .setTitle("地图设置")
+                .setView(box)
+                .setPositiveButton("保存", (d, w) -> {
+                    int checked = group.getCheckedRadioButtonId();
+                    tileProvider = checked == 1002 ? TileSource.PROVIDER_TIANDITU
+                            : checked == 1003 ? TileSource.PROVIDER_ESRI
+                            : TileSource.PROVIDER_AMAP;
+                    tdtKey = key.getText().toString().trim();
+                    prefs.edit()
+                            .putInt("tileProvider", tileProvider)
+                            .putString("tdtKey", tdtKey)
+                            .apply();
+                    applyMapType(true);
+                    if (tileProvider == TileSource.PROVIDER_TIANDITU && tdtKey.isEmpty()) {
+                        toast("未填天地图 tk，已自动回退高德");
+                    }
+                })
+                .setNeutralButton("清除缓存", (d, w) -> {
+                    mapView.clearTileCache();
+                    toast("瓦片缓存已清除");
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
     private void showMapDisplayDialog() {
-        String[] items = {"显示市界", "显示地名", "显示经纬网", "显示定位精度圈", "显示坐标气泡"};
-        boolean[] checked = {showCity, showLabels, showGrid, showAccuracy, showBubble};
+        String[] items = {"显示市界", "显示县界", "显示地名", "显示经纬网", "显示定位精度圈", "显示坐标气泡"};
+        boolean[] checked = {showCity, showCounty, showLabels, showGrid, showAccuracy, showBubble};
         new AlertDialog.Builder(this)
                 .setTitle("地图显示")
                 .setMultiChoiceItems(items, checked, (d, which, isChecked) -> {
@@ -613,12 +782,15 @@ public class MainActivity extends Activity implements BtLink.Callback {
                             showCity = isChecked;
                             break;
                         case 1:
-                            showLabels = isChecked;
+                            showCounty = isChecked;
                             break;
                         case 2:
-                            showGrid = isChecked;
+                            showLabels = isChecked;
                             break;
                         case 3:
+                            showGrid = isChecked;
+                            break;
+                        case 4:
                             showAccuracy = isChecked;
                             break;
                         default:
@@ -627,6 +799,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
                     }
                     prefs.edit()
                             .putBoolean("showCity", showCity)
+                            .putBoolean("showCounty", showCounty)
                             .putBoolean("showLabels", showLabels)
                             .putBoolean("showGrid", showGrid)
                             .putBoolean("showAccuracy", showAccuracy)
@@ -640,6 +813,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
 
     private void applyDisplaySettings() {
         mapView.setCityVisible(showCity);
+        mapView.setCountyVisible(showCounty);
         mapView.setLabelsVisible(showLabels);
         mapView.setGridVisible(showGrid);
         mapView.setAccuracyVisible(showAccuracy);
@@ -701,13 +875,15 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "中国地图蓝牙轨迹  v1.1\n\n"
-                + "· 地图完全内置（GCJ-02 底图），不联网、无 INTERNET 权限\n"
+        String msg = "中国地图蓝牙轨迹  v1.2.0\n\n"
+                + "· 标准底图内置到县级（GCJ-02），完全离线\n"
+                + "· 街道/卫星/卫星+路网/地形为在线瓦片，需要网络\n"
                 + "· 输入坐标系可选：GCJ-02 / WGS-84 / BD-09 / CGCS2000\n"
                 + "· 蓝牙：经典 SPP + BLE GATT（自动枚举并订阅所有通知特征）\n"
                 + "· 坐标格式：31.2304,121.4737 / lat:.. lon:.. / JSON / NMEA GGA·RMC·GLL\n"
                 + "· 支持 31.2304N,121.4737E；NMEA GGA 的 HDOP 会换算成精度圈\n\n"
-                + "底图：DataV.GeoAtlas（省级 + 地级市），GCJ-02。\n"
+                + "底图：DataV.GeoAtlas（省/市/县）；在线瓦片：高德/Esri/天地图。\n"
+                + "高德瓦片为免 key 接口，仅建议个人测试使用。\n"
                 + "CGCS2000 与 WGS-84 差异 <10cm，按 WGS-84 处理。\n"
                 + "轨迹仅保存在本次运行内存中，退出应用后清空。";
         new AlertDialog.Builder(this)

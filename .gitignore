@@ -8,3 +8,5 @@ locals.properties
 .DS_Store
 *.log
 .gh-config/
+
+tools/geojson/county_*.json

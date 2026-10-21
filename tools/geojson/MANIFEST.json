@@ -1,6 +1,6 @@
 {
   "source": "https://geo.datav.aliyun.com/areas_v3/bound/",
-  "fetched_at": "2026-10-20T10:32:17Z",
+  "fetched_at": "2026-10-21T03:04:09Z",
   "provinces": [
     {
       "adcode": "110000",
@@ -139,6 +139,1460 @@
       "name": "澳门特别行政区"
     }
   ],
+  "cities": [
+    {
+      "adcode": "130100",
+      "name": "石家庄市"
+    },
+    {
+      "adcode": "130200",
+      "name": "唐山市"
+    },
+    {
+      "adcode": "130300",
+      "name": "秦皇岛市"
+    },
+    {
+      "adcode": "130400",
+      "name": "邯郸市"
+    },
+    {
+      "adcode": "130500",
+      "name": "邢台市"
+    },
+    {
+      "adcode": "130600",
+      "name": "保定市"
+    },
+    {
+      "adcode": "130700",
+      "name": "张家口市"
+    },
+    {
+      "adcode": "130800",
+      "name": "承德市"
+    },
+    {
+      "adcode": "130900",
+      "name": "沧州市"
+    },
+    {
+      "adcode": "131000",
+      "name": "廊坊市"
+    },
+    {
+      "adcode": "131100",
+      "name": "衡水市"
+    },
+    {
+      "adcode": "140100",
+      "name": "太原市"
+    },
+    {
+      "adcode": "140200",
+      "name": "大同市"
+    },
+    {
+      "adcode": "140300",
+      "name": "阳泉市"
+    },
+    {
+      "adcode": "140400",
+      "name": "长治市"
+    },
+    {
+      "adcode": "140500",
+      "name": "晋城市"
+    },
+    {
+      "adcode": "140600",
+      "name": "朔州市"
+    },
+    {
+      "adcode": "140700",
+      "name": "晋中市"
+    },
+    {
+      "adcode": "140800",
+      "name": "运城市"
+    },
+    {
+      "adcode": "140900",
+      "name": "忻州市"
+    },
+    {
+      "adcode": "141000",
+      "name": "临汾市"
+    },
+    {
+      "adcode": "141100",
+      "name": "吕梁市"
+    },
+    {
+      "adcode": "150100",
+      "name": "呼和浩特市"
+    },
+    {
+      "adcode": "150200",
+      "name": "包头市"
+    },
+    {
+      "adcode": "150300",
+      "name": "乌海市"
+    },
+    {
+      "adcode": "150400",
+      "name": "赤峰市"
+    },
+    {
+      "adcode": "150500",
+      "name": "通辽市"
+    },
+    {
+      "adcode": "150600",
+      "name": "鄂尔多斯市"
+    },
+    {
+      "adcode": "150700",
+      "name": "呼伦贝尔市"
+    },
+    {
+      "adcode": "150800",
+      "name": "巴彦淖尔市"
+    },
+    {
+      "adcode": "150900",
+      "name": "乌兰察布市"
+    },
+    {
+      "adcode": "152200",
+      "name": "兴安盟"
+    },
+    {
+      "adcode": "152500",
+      "name": "锡林郭勒盟"
+    },
+    {
+      "adcode": "152900",
+      "name": "阿拉善盟"
+    },
+    {
+      "adcode": "210100",
+      "name": "沈阳市"
+    },
+    {
+      "adcode": "210200",
+      "name": "大连市"
+    },
+    {
+      "adcode": "210300",
+      "name": "鞍山市"
+    },
+    {
+      "adcode": "210400",
+      "name": "抚顺市"
+    },
+    {
+      "adcode": "210500",
+      "name": "本溪市"
+    },
+    {
+      "adcode": "210600",
+      "name": "丹东市"
+    },
+    {
+      "adcode": "210700",
+      "name": "锦州市"
+    },
+    {
+      "adcode": "210800",
+      "name": "营口市"
+    },
+    {
+      "adcode": "210900",
+      "name": "阜新市"
+    },
+    {
+      "adcode": "211000",
+      "name": "辽阳市"
+    },
+    {
+      "adcode": "211100",
+      "name": "盘锦市"
+    },
+    {
+      "adcode": "211200",
+      "name": "铁岭市"
+    },
+    {
+      "adcode": "211300",
+      "name": "朝阳市"
+    },
+    {
+      "adcode": "211400",
+      "name": "葫芦岛市"
+    },
+    {
+      "adcode": "220100",
+      "name": "长春市"
+    },
+    {
+      "adcode": "220200",
+      "name": "吉林市"
+    },
+    {
+      "adcode": "220300",
+      "name": "四平市"
+    },
+    {
+      "adcode": "220400",
+      "name": "辽源市"
+    },
+    {
+      "adcode": "220500",
+      "name": "通化市"
+    },
+    {
+      "adcode": "220600",
+      "name": "白山市"
+    },
+    {
+      "adcode": "220700",
+      "name": "松原市"
+    },
+    {
+      "adcode": "220800",
+      "name": "白城市"
+    },
+    {
+      "adcode": "222400",
+      "name": "延边朝鲜族自治州"
+    },
+    {
+      "adcode": "230100",
+      "name": "哈尔滨市"
+    },
+    {
+      "adcode": "230200",
+      "name": "齐齐哈尔市"
+    },
+    {
+      "adcode": "230300",
+      "name": "鸡西市"
+    },
+    {
+      "adcode": "230400",
+      "name": "鹤岗市"
+    },
+    {
+      "adcode": "230500",
+      "name": "双鸭山市"
+    },
+    {
+      "adcode": "230600",
+      "name": "大庆市"
+    },
+    {
+      "adcode": "230700",
+      "name": "伊春市"
+    },
+    {
+      "adcode": "230800",
+      "name": "佳木斯市"
+    },
+    {
+      "adcode": "230900",
+      "name": "七台河市"
+    },
+    {
+      "adcode": "231000",
+      "name": "牡丹江市"
+    },
+    {
+      "adcode": "231100",
+      "name": "黑河市"
+    },
+    {
+      "adcode": "231200",
+      "name": "绥化市"
+    },
+    {
+      "adcode": "232700",
+      "name": "大兴安岭地区"
+    },
+    {
+      "adcode": "320100",
+      "name": "南京市"
+    },
+    {
+      "adcode": "320200",
+      "name": "无锡市"
+    },
+    {
+      "adcode": "320300",
+      "name": "徐州市"
+    },
+    {
+      "adcode": "320400",
+      "name": "常州市"
+    },
+    {
+      "adcode": "320500",
+      "name": "苏州市"
+    },
+    {
+      "adcode": "320600",
+      "name": "南通市"
+    },
+    {
+      "adcode": "320700",
+      "name": "连云港市"
+    },
+    {
+      "adcode": "320800",
+      "name": "淮安市"
+    },
+    {
+      "adcode": "320900",
+      "name": "盐城市"
+    },
+    {
+      "adcode": "321000",
+      "name": "扬州市"
+    },
+    {
+      "adcode": "321100",
+      "name": "镇江市"
+    },
+    {
+      "adcode": "321200",
+      "name": "泰州市"
+    },
+    {
+      "adcode": "321300",
+      "name": "宿迁市"
+    },
+    {
+      "adcode": "330100",
+      "name": "杭州市"
+    },
+    {
+      "adcode": "330200",
+      "name": "宁波市"
+    },
+    {
+      "adcode": "330300",
+      "name": "温州市"
+    },
+    {
+      "adcode": "330400",
+      "name": "嘉兴市"
+    },
+    {
+      "adcode": "330500",
+      "name": "湖州市"
+    },
+    {
+      "adcode": "330600",
+      "name": "绍兴市"
+    },
+    {
+      "adcode": "330700",
+      "name": "金华市"
+    },
+    {
+      "adcode": "330800",
+      "name": "衢州市"
+    },
+    {
+      "adcode": "330900",
+      "name": "舟山市"
+    },
+    {
+      "adcode": "331000",
+      "name": "台州市"
+    },
+    {
+      "adcode": "331100",
+      "name": "丽水市"
+    },
+    {
+      "adcode": "340100",
+      "name": "合肥市"
+    },
+    {
+      "adcode": "340200",
+      "name": "芜湖市"
+    },
+    {
+      "adcode": "340300",
+      "name": "蚌埠市"
+    },
+    {
+      "adcode": "340400",
+      "name": "淮南市"
+    },
+    {
+      "adcode": "340500",
+      "name": "马鞍山市"
+    },
+    {
+      "adcode": "340600",
+      "name": "淮北市"
+    },
+    {
+      "adcode": "340700",
+      "name": "铜陵市"
+    },
+    {
+      "adcode": "340800",
+      "name": "安庆市"
+    },
+    {
+      "adcode": "341000",
+      "name": "黄山市"
+    },
+    {
+      "adcode": "341100",
+      "name": "滁州市"
+    },
+    {
+      "adcode": "341200",
+      "name": "阜阳市"
+    },
+    {
+      "adcode": "341300",
+      "name": "宿州市"
+    },
+    {
+      "adcode": "341500",
+      "name": "六安市"
+    },
+    {
+      "adcode": "341600",
+      "name": "亳州市"
+    },
+    {
+      "adcode": "341700",
+      "name": "池州市"
+    },
+    {
+      "adcode": "341800",
+      "name": "宣城市"
+    },
+    {
+      "adcode": "350100",
+      "name": "福州市"
+    },
+    {
+      "adcode": "350200",
+      "name": "厦门市"
+    },
+    {
+      "adcode": "350300",
+      "name": "莆田市"
+    },
+    {
+      "adcode": "350400",
+      "name": "三明市"
+    },
+    {
+      "adcode": "350500",
+      "name": "泉州市"
+    },
+    {
+      "adcode": "350600",
+      "name": "漳州市"
+    },
+    {
+      "adcode": "350700",
+      "name": "南平市"
+    },
+    {
+      "adcode": "350800",
+      "name": "龙岩市"
+    },
+    {
+      "adcode": "350900",
+      "name": "宁德市"
+    },
+    {
+      "adcode": "360100",
+      "name": "南昌市"
+    },
+    {
+      "adcode": "360200",
+      "name": "景德镇市"
+    },
+    {
+      "adcode": "360300",
+      "name": "萍乡市"
+    },
+    {
+      "adcode": "360400",
+      "name": "九江市"
+    },
+    {
+      "adcode": "360500",
+      "name": "新余市"
+    },
+    {
+      "adcode": "360600",
+      "name": "鹰潭市"
+    },
+    {
+      "adcode": "360700",
+      "name": "赣州市"
+    },
+    {
+      "adcode": "360800",
+      "name": "吉安市"
+    },
+    {
+      "adcode": "360900",
+      "name": "宜春市"
+    },
+    {
+      "adcode": "361000",
+      "name": "抚州市"
+    },
+    {
+      "adcode": "361100",
+      "name": "上饶市"
+    },
+    {
+      "adcode": "370100",
+      "name": "济南市"
+    },
+    {
+      "adcode": "370200",
+      "name": "青岛市"
+    },
+    {
+      "adcode": "370300",
+      "name": "淄博市"
+    },
+    {
+      "adcode": "370400",
+      "name": "枣庄市"
+    },
+    {
+      "adcode": "370500",
+      "name": "东营市"
+    },
+    {
+      "adcode": "370600",
+      "name": "烟台市"
+    },
+    {
+      "adcode": "370700",
+      "name": "潍坊市"
+    },
+    {
+      "adcode": "370800",
+      "name": "济宁市"
+    },
+    {
+      "adcode": "370900",
+      "name": "泰安市"
+    },
+    {
+      "adcode": "371000",
+      "name": "威海市"
+    },
+    {
+      "adcode": "371100",
+      "name": "日照市"
+    },
+    {
+      "adcode": "371300",
+      "name": "临沂市"
+    },
+    {
+      "adcode": "371400",
+      "name": "德州市"
+    },
+    {
+      "adcode": "371500",
+      "name": "聊城市"
+    },
+    {
+      "adcode": "371600",
+      "name": "滨州市"
+    },
+    {
+      "adcode": "371700",
+      "name": "菏泽市"
+    },
+    {
+      "adcode": "410100",
+      "name": "郑州市"
+    },
+    {
+      "adcode": "410200",
+      "name": "开封市"
+    },
+    {
+      "adcode": "410300",
+      "name": "洛阳市"
+    },
+    {
+      "adcode": "410400",
+      "name": "平顶山市"
+    },
+    {
+      "adcode": "410500",
+      "name": "安阳市"
+    },
+    {
+      "adcode": "410600",
+      "name": "鹤壁市"
+    },
+    {
+      "adcode": "410700",
+      "name": "新乡市"
+    },
+    {
+      "adcode": "410800",
+      "name": "焦作市"
+    },
+    {
+      "adcode": "410900",
+      "name": "濮阳市"
+    },
+    {
+      "adcode": "411000",
+      "name": "许昌市"
+    },
+    {
+      "adcode": "411100",
+      "name": "漯河市"
+    },
+    {
+      "adcode": "411200",
+      "name": "三门峡市"
+    },
+    {
+      "adcode": "411300",
+      "name": "南阳市"
+    },
+    {
+      "adcode": "411400",
+      "name": "商丘市"
+    },
+    {
+      "adcode": "411500",
+      "name": "信阳市"
+    },
+    {
+      "adcode": "411600",
+      "name": "周口市"
+    },
+    {
+      "adcode": "411700",
+      "name": "驻马店市"
+    },
+    {
+      "adcode": "419001",
+      "name": "济源市"
+    },
+    {
+      "adcode": "420100",
+      "name": "武汉市"
+    },
+    {
+      "adcode": "420200",
+      "name": "黄石市"
+    },
+    {
+      "adcode": "420300",
+      "name": "十堰市"
+    },
+    {
+      "adcode": "420500",
+      "name": "宜昌市"
+    },
+    {
+      "adcode": "420600",
+      "name": "襄阳市"
+    },
+    {
+      "adcode": "420700",
+      "name": "鄂州市"
+    },
+    {
+      "adcode": "420800",
+      "name": "荆门市"
+    },
+    {
+      "adcode": "420900",
+      "name": "孝感市"
+    },
+    {
+      "adcode": "421000",
+      "name": "荆州市"
+    },
+    {
+      "adcode": "421100",
+      "name": "黄冈市"
+    },
+    {
+      "adcode": "421200",
+      "name": "咸宁市"
+    },
+    {
+      "adcode": "421300",
+      "name": "随州市"
+    },
+    {
+      "adcode": "422800",
+      "name": "恩施土家族苗族自治州"
+    },
+    {
+      "adcode": "429004",
+      "name": "仙桃市"
+    },
+    {
+      "adcode": "429005",
+      "name": "潜江市"
+    },
+    {
+      "adcode": "429006",
+      "name": "天门市"
+    },
+    {
+      "adcode": "429021",
+      "name": "神农架林区"
+    },
+    {
+      "adcode": "430100",
+      "name": "长沙市"
+    },
+    {
+      "adcode": "430200",
+      "name": "株洲市"
+    },
+    {
+      "adcode": "430300",
+      "name": "湘潭市"
+    },
+    {
+      "adcode": "430400",
+      "name": "衡阳市"
+    },
+    {
+      "adcode": "430500",
+      "name": "邵阳市"
+    },
+    {
+      "adcode": "430600",
+      "name": "岳阳市"
+    },
+    {
+      "adcode": "430700",
+      "name": "常德市"
+    },
+    {
+      "adcode": "430800",
+      "name": "张家界市"
+    },
+    {
+      "adcode": "430900",
+      "name": "益阳市"
+    },
+    {
+      "adcode": "431000",
+      "name": "郴州市"
+    },
+    {
+      "adcode": "431100",
+      "name": "永州市"
+    },
+    {
+      "adcode": "431200",
+      "name": "怀化市"
+    },
+    {
+      "adcode": "431300",
+      "name": "娄底市"
+    },
+    {
+      "adcode": "433100",
+      "name": "湘西土家族苗族自治州"
+    },
+    {
+      "adcode": "440100",
+      "name": "广州市"
+    },
+    {
+      "adcode": "440200",
+      "name": "韶关市"
+    },
+    {
+      "adcode": "440300",
+      "name": "深圳市"
+    },
+    {
+      "adcode": "440400",
+      "name": "珠海市"
+    },
+    {
+      "adcode": "440500",
+      "name": "汕头市"
+    },
+    {
+      "adcode": "440600",
+      "name": "佛山市"
+    },
+    {
+      "adcode": "440700",
+      "name": "江门市"
+    },
+    {
+      "adcode": "440800",
+      "name": "湛江市"
+    },
+    {
+      "adcode": "440900",
+      "name": "茂名市"
+    },
+    {
+      "adcode": "441200",
+      "name": "肇庆市"
+    },
+    {
+      "adcode": "441300",
+      "name": "惠州市"
+    },
+    {
+      "adcode": "441400",
+      "name": "梅州市"
+    },
+    {
+      "adcode": "441500",
+      "name": "汕尾市"
+    },
+    {
+      "adcode": "441600",
+      "name": "河源市"
+    },
+    {
+      "adcode": "441700",
+      "name": "阳江市"
+    },
+    {
+      "adcode": "441800",
+      "name": "清远市"
+    },
+    {
+      "adcode": "441900",
+      "name": "东莞市"
+    },
+    {
+      "adcode": "442000",
+      "name": "中山市"
+    },
+    {
+      "adcode": "445100",
+      "name": "潮州市"
+    },
+    {
+      "adcode": "445200",
+      "name": "揭阳市"
+    },
+    {
+      "adcode": "445300",
+      "name": "云浮市"
+    },
+    {
+      "adcode": "450100",
+      "name": "南宁市"
+    },
+    {
+      "adcode": "450200",
+      "name": "柳州市"
+    },
+    {
+      "adcode": "450300",
+      "name": "桂林市"
+    },
+    {
+      "adcode": "450400",
+      "name": "梧州市"
+    },
+    {
+      "adcode": "450500",
+      "name": "北海市"
+    },
+    {
+      "adcode": "450600",
+      "name": "防城港市"
+    },
+    {
+      "adcode": "450700",
+      "name": "钦州市"
+    },
+    {
+      "adcode": "450800",
+      "name": "贵港市"
+    },
+    {
+      "adcode": "450900",
+      "name": "玉林市"
+    },
+    {
+      "adcode": "451000",
+      "name": "百色市"
+    },
+    {
+      "adcode": "451100",
+      "name": "贺州市"
+    },
+    {
+      "adcode": "451200",
+      "name": "河池市"
+    },
+    {
+      "adcode": "451300",
+      "name": "来宾市"
+    },
+    {
+      "adcode": "451400",
+      "name": "崇左市"
+    },
+    {
+      "adcode": "460100",
+      "name": "海口市"
+    },
+    {
+      "adcode": "460200",
+      "name": "三亚市"
+    },
+    {
+      "adcode": "460300",
+      "name": "三沙市"
+    },
+    {
+      "adcode": "460400",
+      "name": "儋州市"
+    },
+    {
+      "adcode": "469001",
+      "name": "五指山市"
+    },
+    {
+      "adcode": "469002",
+      "name": "琼海市"
+    },
+    {
+      "adcode": "469005",
+      "name": "文昌市"
+    },
+    {
+      "adcode": "469006",
+      "name": "万宁市"
+    },
+    {
+      "adcode": "469007",
+      "name": "东方市"
+    },
+    {
+      "adcode": "469021",
+      "name": "定安县"
+    },
+    {
+      "adcode": "469022",
+      "name": "屯昌县"
+    },
+    {
+      "adcode": "469023",
+      "name": "澄迈县"
+    },
+    {
+      "adcode": "469024",
+      "name": "临高县"
+    },
+    {
+      "adcode": "469025",
+      "name": "白沙黎族自治县"
+    },
+    {
+      "adcode": "469026",
+      "name": "昌江黎族自治县"
+    },
+    {
+      "adcode": "469027",
+      "name": "乐东黎族自治县"
+    },
+    {
+      "adcode": "469028",
+      "name": "陵水黎族自治县"
+    },
+    {
+      "adcode": "469029",
+      "name": "保亭黎族苗族自治县"
+    },
+    {
+      "adcode": "469030",
+      "name": "琼中黎族苗族自治县"
+    },
+    {
+      "adcode": "510100",
+      "name": "成都市"
+    },
+    {
+      "adcode": "510300",
+      "name": "自贡市"
+    },
+    {
+      "adcode": "510400",
+      "name": "攀枝花市"
+    },
+    {
+      "adcode": "510500",
+      "name": "泸州市"
+    },
+    {
+      "adcode": "510600",
+      "name": "德阳市"
+    },
+    {
+      "adcode": "510700",
+      "name": "绵阳市"
+    },
+    {
+      "adcode": "510800",
+      "name": "广元市"
+    },
+    {
+      "adcode": "510900",
+      "name": "遂宁市"
+    },
+    {
+      "adcode": "511000",
+      "name": "内江市"
+    },
+    {
+      "adcode": "511100",
+      "name": "乐山市"
+    },
+    {
+      "adcode": "511300",
+      "name": "南充市"
+    },
+    {
+      "adcode": "511400",
+      "name": "眉山市"
+    },
+    {
+      "adcode": "511500",
+      "name": "宜宾市"
+    },
+    {
+      "adcode": "511600",
+      "name": "广安市"
+    },
+    {
+      "adcode": "511700",
+      "name": "达州市"
+    },
+    {
+      "adcode": "511800",
+      "name": "雅安市"
+    },
+    {
+      "adcode": "511900",
+      "name": "巴中市"
+    },
+    {
+      "adcode": "512000",
+      "name": "资阳市"
+    },
+    {
+      "adcode": "513200",
+      "name": "阿坝藏族羌族自治州"
+    },
+    {
+      "adcode": "513300",
+      "name": "甘孜藏族自治州"
+    },
+    {
+      "adcode": "513400",
+      "name": "凉山彝族自治州"
+    },
+    {
+      "adcode": "520100",
+      "name": "贵阳市"
+    },
+    {
+      "adcode": "520200",
+      "name": "六盘水市"
+    },
+    {
+      "adcode": "520300",
+      "name": "遵义市"
+    },
+    {
+      "adcode": "520400",
+      "name": "安顺市"
+    },
+    {
+      "adcode": "520500",
+      "name": "毕节市"
+    },
+    {
+      "adcode": "520600",
+      "name": "铜仁市"
+    },
+    {
+      "adcode": "522300",
+      "name": "黔西南布依族苗族自治州"
+    },
+    {
+      "adcode": "522600",
+      "name": "黔东南苗族侗族自治州"
+    },
+    {
+      "adcode": "522700",
+      "name": "黔南布依族苗族自治州"
+    },
+    {
+      "adcode": "530100",
+      "name": "昆明市"
+    },
+    {
+      "adcode": "530300",
+      "name": "曲靖市"
+    },
+    {
+      "adcode": "530400",
+      "name": "玉溪市"
+    },
+    {
+      "adcode": "530500",
+      "name": "保山市"
+    },
+    {
+      "adcode": "530600",
+      "name": "昭通市"
+    },
+    {
+      "adcode": "530700",
+      "name": "丽江市"
+    },
+    {
+      "adcode": "530800",
+      "name": "普洱市"
+    },
+    {
+      "adcode": "530900",
+      "name": "临沧市"
+    },
+    {
+      "adcode": "532300",
+      "name": "楚雄彝族自治州"
+    },
+    {
+      "adcode": "532500",
+      "name": "红河哈尼族彝族自治州"
+    },
+    {
+      "adcode": "532600",
+      "name": "文山壮族苗族自治州"
+    },
+    {
+      "adcode": "532800",
+      "name": "西双版纳傣族自治州"
+    },
+    {
+      "adcode": "532900",
+      "name": "大理白族自治州"
+    },
+    {
+      "adcode": "533100",
+      "name": "德宏傣族景颇族自治州"
+    },
+    {
+      "adcode": "533300",
+      "name": "怒江傈僳族自治州"
+    },
+    {
+      "adcode": "533400",
+      "name": "迪庆藏族自治州"
+    },
+    {
+      "adcode": "540100",
+      "name": "拉萨市"
+    },
+    {
+      "adcode": "540200",
+      "name": "日喀则市"
+    },
+    {
+      "adcode": "540300",
+      "name": "昌都市"
+    },
+    {
+      "adcode": "540400",
+      "name": "林芝市"
+    },
+    {
+      "adcode": "540500",
+      "name": "山南市"
+    },
+    {
+      "adcode": "540600",
+      "name": "那曲市"
+    },
+    {
+      "adcode": "542500",
+      "name": "阿里地区"
+    },
+    {
+      "adcode": "610100",
+      "name": "西安市"
+    },
+    {
+      "adcode": "610200",
+      "name": "铜川市"
+    },
+    {
+      "adcode": "610300",
+      "name": "宝鸡市"
+    },
+    {
+      "adcode": "610400",
+      "name": "咸阳市"
+    },
+    {
+      "adcode": "610500",
+      "name": "渭南市"
+    },
+    {
+      "adcode": "610600",
+      "name": "延安市"
+    },
+    {
+      "adcode": "610700",
+      "name": "汉中市"
+    },
+    {
+      "adcode": "610800",
+      "name": "榆林市"
+    },
+    {
+      "adcode": "610900",
+      "name": "安康市"
+    },
+    {
+      "adcode": "611000",
+      "name": "商洛市"
+    },
+    {
+      "adcode": "620100",
+      "name": "兰州市"
+    },
+    {
+      "adcode": "620200",
+      "name": "嘉峪关市"
+    },
+    {
+      "adcode": "620300",
+      "name": "金昌市"
+    },
+    {
+      "adcode": "620400",
+      "name": "白银市"
+    },
+    {
+      "adcode": "620500",
+      "name": "天水市"
+    },
+    {
+      "adcode": "620600",
+      "name": "武威市"
+    },
+    {
+      "adcode": "620700",
+      "name": "张掖市"
+    },
+    {
+      "adcode": "620800",
+      "name": "平凉市"
+    },
+    {
+      "adcode": "620900",
+      "name": "酒泉市"
+    },
+    {
+      "adcode": "621000",
+      "name": "庆阳市"
+    },
+    {
+      "adcode": "621100",
+      "name": "定西市"
+    },
+    {
+      "adcode": "621200",
+      "name": "陇南市"
+    },
+    {
+      "adcode": "622900",
+      "name": "临夏回族自治州"
+    },
+    {
+      "adcode": "623000",
+      "name": "甘南藏族自治州"
+    },
+    {
+      "adcode": "630100",
+      "name": "西宁市"
+    },
+    {
+      "adcode": "630200",
+      "name": "海东市"
+    },
+    {
+      "adcode": "632200",
+      "name": "海北藏族自治州"
+    },
+    {
+      "adcode": "632300",
+      "name": "黄南藏族自治州"
+    },
+    {
+      "adcode": "632500",
+      "name": "海南藏族自治州"
+    },
+    {
+      "adcode": "632600",
+      "name": "果洛藏族自治州"
+    },
+    {
+      "adcode": "632700",
+      "name": "玉树藏族自治州"
+    },
+    {
+      "adcode": "632800",
+      "name": "海西蒙古族藏族自治州"
+    },
+    {
+      "adcode": "640100",
+      "name": "银川市"
+    },
+    {
+      "adcode": "640200",
+      "name": "石嘴山市"
+    },
+    {
+      "adcode": "640300",
+      "name": "吴忠市"
+    },
+    {
+      "adcode": "640400",
+      "name": "固原市"
+    },
+    {
+      "adcode": "640500",
+      "name": "中卫市"
+    },
+    {
+      "adcode": "650100",
+      "name": "乌鲁木齐市"
+    },
+    {
+      "adcode": "650200",
+      "name": "克拉玛依市"
+    },
+    {
+      "adcode": "650400",
+      "name": "吐鲁番市"
+    },
+    {
+      "adcode": "650500",
+      "name": "哈密市"
+    },
+    {
+      "adcode": "652300",
+      "name": "昌吉回族自治州"
+    },
+    {
+      "adcode": "652700",
+      "name": "博尔塔拉蒙古自治州"
+    },
+    {
+      "adcode": "652800",
+      "name": "巴音郭楞蒙古自治州"
+    },
+    {
+      "adcode": "652900",
+      "name": "阿克苏地区"
+    },
+    {
+      "adcode": "653000",
+      "name": "克孜勒苏柯尔克孜自治州"
+    },
+    {
+      "adcode": "653100",
+      "name": "喀什地区"
+    },
+    {
+      "adcode": "653200",
+      "name": "和田地区"
+    },
+    {
+      "adcode": "654000",
+      "name": "伊犁哈萨克自治州"
+    },
+    {
+      "adcode": "654200",
+      "name": "塔城地区"
+    },
+    {
+      "adcode": "654300",
+      "name": "阿勒泰地区"
+    },
+    {
+      "adcode": "659001",
+      "name": "石河子市"
+    },
+    {
+      "adcode": "659002",
+      "name": "阿拉尔市"
+    },
+    {
+      "adcode": "659003",
+      "name": "图木舒克市"
+    },
+    {
+      "adcode": "659004",
+      "name": "五家渠市"
+    },
+    {
+      "adcode": "659005",
+      "name": "北屯市"
+    },
+    {
+      "adcode": "659006",
+      "name": "铁门关市"
+    },
+    {
+      "adcode": "659007",
+      "name": "双河市"
+    },
+    {
+      "adcode": "659008",
+      "name": "可克达拉市"
+    },
+    {
+      "adcode": "659009",
+      "name": "昆玉市"
+    },
+    {
+      "adcode": "659010",
+      "name": "胡杨河市"
+    }
+  ],
   "files": {
     "cn_100000_full.json": {
       "sha256": "99adfeded5223848bbe37a0a12f8023e11ee12161c7800521c27db42fdeac275",
@@ -275,6 +1729,1322 @@
     "prov_820000_full.json": {
       "sha256": "54a6c69e0007640b25d45b44357037fb40bce2e0e36e7a9026ebcbdfa7cfb19a",
       "bytes": 13423
+    },
+    "county_130100_full.json": {
+      "sha256": "556b51cd1f2b058e6e0b3f62939f68891f6f45c6284e6d3bb5fbf87ca4212e7b",
+      "bytes": 142974
+    },
+    "county_130200_full.json": {
+      "sha256": "f2daf09abac73ea65c502e645d3571354ef10753d3d3493a99d82ed581489686",
+      "bytes": 70380
+    },
+    "county_130300_full.json": {
+      "sha256": "9d735cfb18f580e7322574882fd80ec8c90fd80f1ab6a345b4d7f06d596d5028",
+      "bytes": 62474
+    },
+    "county_130400_full.json": {
+      "sha256": "08d516a709c49656f085c88562b5adffdf5bcc9d1617c26abd81e70dd86d725f",
+      "bytes": 114092
+    },
+    "county_130500_full.json": {
+      "sha256": "93910c6d3b8b2a5ce359862ae6de81b929916630430a24d0ab27adeea3b803a7",
+      "bytes": 111714
+    },
+    "county_130600_full.json": {
+      "sha256": "2a3b23b39ca2691064f88f3cb5c2aa8c3c97d157dae4cf6725900703132aeac9",
+      "bytes": 118488
+    },
+    "county_130700_full.json": {
+      "sha256": "757ca6fa935733f9f397dedf5ac9b58ebf4dded6cb3741c524c00916b090a12b",
+      "bytes": 108432
+    },
+    "county_130800_full.json": {
+      "sha256": "7a3b61fdadf81c5d318280ddd7dc684b58c6f790e198fe219efa5be99cb67f66",
+      "bytes": 89214
+    },
+    "county_130900_full.json": {
+      "sha256": "7a641ec8328bc40df33a4487033757e71c3157a0706bb723675e5c2a846767b5",
+      "bytes": 133734
+    },
+    "county_131000_full.json": {
+      "sha256": "7d2f6a083b44c98e4b3834f2ea3e08588a48cdf38b3158f91055f584376588bc",
+      "bytes": 50953
+    },
+    "county_131100_full.json": {
+      "sha256": "3582aa5b7385db9988610adbdc9f83637c42ec834d65e783cc11154a232c012f",
+      "bytes": 89121
+    },
+    "county_140100_full.json": {
+      "sha256": "805882eee96aa527a2b6e18af2ea6050d6625dc4615e3a8ff84aa60d06ad936e",
+      "bytes": 63198
+    },
+    "county_140200_full.json": {
+      "sha256": "cf8e9cd2dc9f42c00779df700a0fb97577af4975637ff8dc805c1b6eae02814c",
+      "bytes": 46564
+    },
+    "county_140300_full.json": {
+      "sha256": "4da833f8187ff96c105adba8e6be321376a5edb7a8fd5a6cb77957eb6ac69ab2",
+      "bytes": 29036
+    },
+    "county_140400_full.json": {
+      "sha256": "8e83ab9976bd85aeee37b828ca2b1149517bb87cd0b1009f003e8335dbf4149e",
+      "bytes": 67464
+    },
+    "county_140500_full.json": {
+      "sha256": "124c7e950979f76e390999b8259cddbea51fd8a738fb166aad13bf7ddd9a41a8",
+      "bytes": 43418
+    },
+    "county_140600_full.json": {
+      "sha256": "0c4dce9d473594cfb9c22428faf19e43f7de088c99aaf22cbe365e57c4b51f44",
+      "bytes": 44130
+    },
+    "county_140700_full.json": {
+      "sha256": "3c35cd60fff8723fab73335ce757b21073c5774791186cd18c7e3ef262605a49",
+      "bytes": 72158
+    },
+    "county_140800_full.json": {
+      "sha256": "7d751564ce9c6263c9e4417fb031150867d8b74a07fb4fc457fad8b7dc68c520",
+      "bytes": 94336
+    },
+    "county_140900_full.json": {
+      "sha256": "89703a4890b0a7d14438cb818648128eeac35be2309f060f0e2103abef7e7965",
+      "bytes": 69906
+    },
+    "county_141000_full.json": {
+      "sha256": "eab420a3764f876ddcd5023b08ff317e13a13fe8e3b19ad5bf68932379d3a19d",
+      "bytes": 91031
+    },
+    "county_141100_full.json": {
+      "sha256": "ab99967d4b45088afbe6de0ce60621afa32a7d4dbe6510bdaa8f83730e1a3574",
+      "bytes": 69701
+    },
+    "county_150100_full.json": {
+      "sha256": "ed6151081fe2c6191b5caf9bc4a93def606fc5095378d707c49c7d6d914ac38c",
+      "bytes": 59930
+    },
+    "county_150200_full.json": {
+      "sha256": "691428ae66c77eeb3ca6b06607c7174e09f0f9ef0af985d987bbc155660e9050",
+      "bytes": 49838
+    },
+    "county_150300_full.json": {
+      "sha256": "4aa09c49b3963ed07c571fdc8c9e490d4118be2f8e7dac4a30d5183f375974ca",
+      "bytes": 9509
+    },
+    "county_150400_full.json": {
+      "sha256": "f8dea9f4b14803577b9ac9fce6f7ae88e6567d4054a66d73c034427be92b315d",
+      "bytes": 79043
+    },
+    "county_150500_full.json": {
+      "sha256": "947ac06c8f7279c7a5d148995bed82e7555284e240797266feaac00471d3339b",
+      "bytes": 56293
+    },
+    "county_150600_full.json": {
+      "sha256": "6d8f6e0013618cb2917b5eab92e86f234f96f7cb3404dd76742c8c97d4b2c981",
+      "bytes": 55908
+    },
+    "county_150700_full.json": {
+      "sha256": "8b547b87a552c280e09a18304574224a1563a051010cdf1f51489f0c9c2db30b",
+      "bytes": 90671
+    },
+    "county_150800_full.json": {
+      "sha256": "521bc71bc492118f72190063424e007b91e74b664c32fcc857c8017f3ed48d98",
+      "bytes": 59484
+    },
+    "county_150900_full.json": {
+      "sha256": "79d0aa67951072c10732f1e62d8ec8b2a77ffe20afe77ffec82ff42727dc5dad",
+      "bytes": 56357
+    },
+    "county_152200_full.json": {
+      "sha256": "ea87ce01084354d807dedaa5896f6f6b1954c1390caa9c77687c6f7acf079e4b",
+      "bytes": 50987
+    },
+    "county_152500_full.json": {
+      "sha256": "94c24bcb750b4749cbc4e2c41fb269562c5147b023c8f64eb3ac0ba0ce8b9847",
+      "bytes": 64761
+    },
+    "county_152900_full.json": {
+      "sha256": "5a39cd1199c790a27dd9d64cd48d0a1ec25dbecf477f54365f18574fa3434975",
+      "bytes": 22578
+    },
+    "county_210100_full.json": {
+      "sha256": "bc80ff7db3fa6c1032ac3a7d267a3c71c8f3ea77514f8306b22f0af2a508cc9a",
+      "bytes": 71243
+    },
+    "county_210200_full.json": {
+      "sha256": "25c543cdd88366d2d7df19fe4b067f5d1aac93b6a4baab5284caa7dc4df4a1e2",
+      "bytes": 107962
+    },
+    "county_210300_full.json": {
+      "sha256": "f2a1d795365daa0c40c0be122456f4650b6b870cb38db2d296394be2feaaee4e",
+      "bytes": 33703
+    },
+    "county_210400_full.json": {
+      "sha256": "033924ae0a06a74f64bb821a420917a15048962c04bc9fdb9aa0e8d8242af5b0",
+      "bytes": 74996
+    },
+    "county_210500_full.json": {
+      "sha256": "48a50c3a825969bfebd8d5d977dc1ca11ec6345a9fa00d9d177c74e532adbcec",
+      "bytes": 58972
+    },
+    "county_210600_full.json": {
+      "sha256": "a9b6b256978c58752b542b8ba0409e5bc562905d84b326f29eb60932ed5f1714",
+      "bytes": 78121
+    },
+    "county_210700_full.json": {
+      "sha256": "2ab1c3de0cfbb8e77946717f0cdb267786299dc3416b5ed9641420b6e6f4842f",
+      "bytes": 68526
+    },
+    "county_210800_full.json": {
+      "sha256": "c104040aeb71c159cf5fc9d92b153bc4e537b8af4664cc5cf927102d1fffbd31",
+      "bytes": 46702
+    },
+    "county_210900_full.json": {
+      "sha256": "6b9fc855add175d4bb0eefc4eed3aaa4e0167ab6d24afb5282259f4242da7eff",
+      "bytes": 64968
+    },
+    "county_211000_full.json": {
+      "sha256": "e5bad656d7e4b8958c68ae5d326db23e6f5b197844df8ca64ea86e5b0289d103",
+      "bytes": 58557
+    },
+    "county_211100_full.json": {
+      "sha256": "c0007b2578f2d7b9471b2e77c25c2a07fbba85305922c0b69d657a117d07642c",
+      "bytes": 41229
+    },
+    "county_211200_full.json": {
+      "sha256": "26ba45fef6ea457b8f7e15c3eeec610e5f5b0c841bb9ee018da6bded98215e0c",
+      "bytes": 63727
+    },
+    "county_211300_full.json": {
+      "sha256": "5840c8567fcee8cf20d1b55a987b30eb145dd2e8c9839463c623aca7feb6bc6e",
+      "bytes": 59413
+    },
+    "county_211400_full.json": {
+      "sha256": "bf63cc5760c989eb5c79886feb99ea0aeeafe8a098dd9c62ed282e97aa6aa8e7",
+      "bytes": 61911
+    },
+    "county_220100_full.json": {
+      "sha256": "686a6acd71a215ac4a3cbd08147f79e07f7cbad424a16bddc0b5476a1325f290",
+      "bytes": 104626
+    },
+    "county_220200_full.json": {
+      "sha256": "9901ee7d96a7f434d0b47f61bbfbc5329edc5afa0b786898736184b9f743955b",
+      "bytes": 98114
+    },
+    "county_220300_full.json": {
+      "sha256": "13a77abb9f6924b2328a4385920a6134bd5732d75e6b99b3290818f1a3acf85d",
+      "bytes": 69591
+    },
+    "county_220400_full.json": {
+      "sha256": "b11325f73fe71236c1c12d5e75b705845bfc0a0a53538f7f03ed1c16e28b2e27",
+      "bytes": 52673
+    },
+    "county_220500_full.json": {
+      "sha256": "0a3171ff7445f26b2ade73f9fb9eb9fddbda94ef7d75bbbcde99649b5e52b9c3",
+      "bytes": 71883
+    },
+    "county_220600_full.json": {
+      "sha256": "e822d22a9054986e29d33e48103db4dd3b4408b7ffe95d81cda70b4b29deb90c",
+      "bytes": 64452
+    },
+    "county_220700_full.json": {
+      "sha256": "962156e941d3c17f5a8b8ec93043b0393555a9aba1150ac2d3797a5901c60f44",
+      "bytes": 44815
+    },
+    "county_220800_full.json": {
+      "sha256": "2182ee8a7f6b5d6020c2389f36b0adb3952a054213f7e80c7013dbaf3aaa637e",
+      "bytes": 48374
+    },
+    "county_222400_full.json": {
+      "sha256": "3c8faadf85ff555be960f86077dfd411fa9da494dc57d564d3429cc44b2e33a7",
+      "bytes": 117157
+    },
+    "county_230100_full.json": {
+      "sha256": "c2df24cde9176569814ce9f0d890b6a6d062fdae90ed3b7c1ce7052658748d60",
+      "bytes": 177590
+    },
+    "county_230200_full.json": {
+      "sha256": "b4192712fa3309e013d18be36abd9fa59f22de326ee7e73ebb1cbc2815d3abe4",
+      "bytes": 60276
+    },
+    "county_230300_full.json": {
+      "sha256": "67be3ae4326c292b2529510ebe97418f2ca2453be9231104e74a8120f112d693",
+      "bytes": 69678
+    },
+    "county_230400_full.json": {
+      "sha256": "f143b67a036ff634f0c73ff65de4193cafcddc68a9f8d88fdbfc0a1620f7c1ab",
+      "bytes": 51731
+    },
+    "county_230500_full.json": {
+      "sha256": "113e3a24efb2c4118144a1fb7e412f09e93d7c3512b037560c5850f4caa412a8",
+      "bytes": 67641
+    },
+    "county_230600_full.json": {
+      "sha256": "b2a6411e0759d370ba089a8770735014044d62959fcd9043e09ce4abeb881ef5",
+      "bytes": 46683
+    },
+    "county_230700_full.json": {
+      "sha256": "039909225ec103a6bdaee0ce739418bbc777dcc2bfa9f22ac6e03295fc6afd8e",
+      "bytes": 46676
+    },
+    "county_230800_full.json": {
+      "sha256": "32100b64a697662e91d3bac459b7ceb51f1f088dc6dc4ec52faa762ad8acb17d",
+      "bytes": 94174
+    },
+    "county_230900_full.json": {
+      "sha256": "7707e87210cf7a0da0a60ae26150932c100702096e312769b782b922e9bac620",
+      "bytes": 68083
+    },
+    "county_231000_full.json": {
+      "sha256": "e325f71828446a3659cadd82af31fff56116dfa41bb7d986ca84b9384b3dc0f0",
+      "bytes": 107023
+    },
+    "county_231100_full.json": {
+      "sha256": "085edcdf23d66e2a49b91f3d464cde32101235396960b20be5acf8a59e3137f1",
+      "bytes": 63307
+    },
+    "county_231200_full.json": {
+      "sha256": "51cf7ab8da17003731b7d903fc118a76085601734fe0f2e520f18174e19c2c98",
+      "bytes": 107396
+    },
+    "county_232700_full.json": {
+      "sha256": "ab979113def3d93225ef3ab39a621598bdcf6ff8318ee01e9d68fdf409e7f87f",
+      "bytes": 46080
+    },
+    "county_320100_full.json": {
+      "sha256": "14871d1526fb14cc967a33aa06df20f157ad7b0759b7d9281be377f2e1adac6d",
+      "bytes": 60834
+    },
+    "county_320200_full.json": {
+      "sha256": "e80d4da545916413c6a71a2bf3a24fcacddf13738bddc99403e2c52a6d8c90e7",
+      "bytes": 35937
+    },
+    "county_320300_full.json": {
+      "sha256": "f1c696a1fed93c883a31dc60c6c608ffad6f6c99d1def14667983e8c47356f05",
+      "bytes": 82054
+    },
+    "county_320400_full.json": {
+      "sha256": "2a5952c2469f1cdf93e8b075a822146f771f56cc9a3312a673fcfbff00ed0215",
+      "bytes": 39052
+    },
+    "county_320500_full.json": {
+      "sha256": "37dddced21487e8983b1f3e8ce2ad6fe116dbe4cd938952b4aec02d355939955",
+      "bytes": 57252
+    },
+    "county_320600_full.json": {
+      "sha256": "c2d3d9fc1628d431cb4d0d9d3f36f3677427c93def1d049a7c618e7ddec83920",
+      "bytes": 41072
+    },
+    "county_320700_full.json": {
+      "sha256": "b2943831f48b4e0e17f94b7613499cabf4c56b26a5ffb695c7e067182ed8a1c8",
+      "bytes": 41716
+    },
+    "county_320800_full.json": {
+      "sha256": "586767bb407260bc075530f6a077af5faa653e865b446e73d8cb24d5c2243115",
+      "bytes": 44909
+    },
+    "county_320900_full.json": {
+      "sha256": "088725cb2df16ed12c36a6d340621675e95edee73a9ae5d999ba841edc1f9514",
+      "bytes": 43557
+    },
+    "county_321000_full.json": {
+      "sha256": "9c53022297baf0ff41560aede394b0d37e738ea81c696b40a73574567d431c67",
+      "bytes": 35118
+    },
+    "county_321100_full.json": {
+      "sha256": "49584acec7e40ed576f05e4df32613ce34c6f929ba112cba997a4b0ff703db6d",
+      "bytes": 63788
+    },
+    "county_321200_full.json": {
+      "sha256": "4977e0b19712d91c4d461700c99c920ad7d18345b99fea049cfa31d666c45a3b",
+      "bytes": 39297
+    },
+    "county_321300_full.json": {
+      "sha256": "e12baf5500b9dcd3716b6cb1b97c65d396c9c3227bfcf0f393cae92362c8b639",
+      "bytes": 37402
+    },
+    "county_330100_full.json": {
+      "sha256": "1bfa48db925fb3e91450e860331151e85b49e3113822b5cabc60a799bb04c903",
+      "bytes": 108019
+    },
+    "county_330200_full.json": {
+      "sha256": "c6358c107be40715aac44a681258d49c8dad9698c9504c7c970a6b96e1cf2169",
+      "bytes": 85005
+    },
+    "county_330300_full.json": {
+      "sha256": "665c78ff06cfeed19f8caca879388d66746e0d4d5631eebeb9aa8a7e3b15a6e3",
+      "bytes": 104921
+    },
+    "county_330400_full.json": {
+      "sha256": "013ae0513f66db8132b6e38dfbfac9427541ca5effe3a11b7f7e491a80695587",
+      "bytes": 70142
+    },
+    "county_330500_full.json": {
+      "sha256": "e9e47004725a3674b967f7d97703b6e1caff3a7c94071d20e2dc0f5f84e965dc",
+      "bytes": 65604
+    },
+    "county_330600_full.json": {
+      "sha256": "dfe21c45375180ce10d88e22621ff089f1eb0d604cc89f624ead12ceeaa462ee",
+      "bytes": 61433
+    },
+    "county_330700_full.json": {
+      "sha256": "8ec1c3c1b5425644e82c9b41e65bff72fccd7929eb0e850b483e6150ba30cb3e",
+      "bytes": 80418
+    },
+    "county_330800_full.json": {
+      "sha256": "2feb7747d799f7097f51017a6e69f40b67a0fbf2cbcb2c0c5a4c257fa3e9c246",
+      "bytes": 65301
+    },
+    "county_330900_full.json": {
+      "sha256": "b63b02ea6af4ef49606be19ce18750be6c6cbaf53e172648c839c74098b3545a",
+      "bytes": 84710
+    },
+    "county_331000_full.json": {
+      "sha256": "546ebf6f0dc8575fffb00e8c47826d0d75c78feba5634fcd34f552bf6bd72d06",
+      "bytes": 90561
+    },
+    "county_331100_full.json": {
+      "sha256": "63d5278bf9fd1fd2701b4191ff884b02aa59bc81c61b64b2c8e6faa31fa3bf89",
+      "bytes": 90572
+    },
+    "county_340100_full.json": {
+      "sha256": "fde3f8762510ada0ee00366d9bb162543db1c1f8951aa44c01e27c97e4117b72",
+      "bytes": 65729
+    },
+    "county_340200_full.json": {
+      "sha256": "e9b76a3e6ba85b07d2ff0d04a8475a35e567bdafc2e7d632de86853416a537dc",
+      "bytes": 45358
+    },
+    "county_340300_full.json": {
+      "sha256": "48c150191e626069afb6c58a1a360ebf63ef2ecfca877442784be1530f7bde27",
+      "bytes": 51106
+    },
+    "county_340400_full.json": {
+      "sha256": "77717987f7578b96e0df52f649fed5d18ac5879e367a8ce3cb7d625736b8bccf",
+      "bytes": 33529
+    },
+    "county_340500_full.json": {
+      "sha256": "3bdff6561c3b52aa1b2d37321deeee01993b17f83a099d221892a99220c42b5f",
+      "bytes": 48517
+    },
+    "county_340600_full.json": {
+      "sha256": "1096c580a27ac973119f8c59ad64ad3f9e2a766349e50588f52c1979814c751f",
+      "bytes": 23955
+    },
+    "county_340700_full.json": {
+      "sha256": "47864627e4a4fa9970f5ac21a2f34b89cb7355586089d2e89927972c8639d839",
+      "bytes": 42099
+    },
+    "county_340800_full.json": {
+      "sha256": "14ce449f3b757d6824cbadd08ca2628179c29faf47cd4fa1b02a92f08c1c8368",
+      "bytes": 63445
+    },
+    "county_341000_full.json": {
+      "sha256": "675efd65e70d2709f1922f9b90bf847258a0e9fa8d272f83ed5b5f85fe0b7efc",
+      "bytes": 62058
+    },
+    "county_341100_full.json": {
+      "sha256": "863377ccda2a0e880b3ba0921bc6ddd46f2b1bd5b4b9fc016e4f17a094dd2d13",
+      "bytes": 72555
+    },
+    "county_341200_full.json": {
+      "sha256": "7ede922f279fe8ff95a955b03beb31338135d3f0eada2e8949fd000c07ad966f",
+      "bytes": 70955
+    },
+    "county_341300_full.json": {
+      "sha256": "f2f531a2cbc03f703a73bf36db182013cc4f0ab7daaac69a16eede1b7841eaec",
+      "bytes": 45088
+    },
+    "county_341500_full.json": {
+      "sha256": "a483a0f3103600986b4d2c2e066c00c6a1e5f46b81387d007cb3a97f53840259",
+      "bytes": 73677
+    },
+    "county_341600_full.json": {
+      "sha256": "ec9a8ef1277dc6ed0d915e797730b677e14526810ca9105aeea2dd2c17917466",
+      "bytes": 38420
+    },
+    "county_341700_full.json": {
+      "sha256": "4020c3d6d3f107fef00a9f955caac1388ba00fdcd13ca6eb1970c7685e7016a6",
+      "bytes": 40667
+    },
+    "county_341800_full.json": {
+      "sha256": "3e8452d1990cadbf72863a416b1a66d95e51325c05bf697f198bfdc78c309ca4",
+      "bytes": 62344
+    },
+    "county_350100_full.json": {
+      "sha256": "35da7612b7436c54ffce8745bcbb9850b980f23041698680985a78dbb6d2b7a1",
+      "bytes": 120428
+    },
+    "county_350200_full.json": {
+      "sha256": "18ffd9136117c80f3ecb7d45aa199298ba02199ee2c9fb353bfc2f07ec7bac32",
+      "bytes": 27769
+    },
+    "county_350300_full.json": {
+      "sha256": "d9aae6ffd736add9b9f0df6cde5e5cd481bfe4c59d6e4a6c50a438c26b8ee9d1",
+      "bytes": 69494
+    },
+    "county_350400_full.json": {
+      "sha256": "8eecca2e42d4718ad09b0e102071ff95cff8a40e4dba92da4c27493dc3a41929",
+      "bytes": 130419
+    },
+    "county_350500_full.json": {
+      "sha256": "60671d99f346c67541042d410a5d645b115d3bb78c1102b110d5fe87d37c71ba",
+      "bytes": 91227
+    },
+    "county_350600_full.json": {
+      "sha256": "429c229dd68838413e6c58e3a03c3c42858a1b241f4c0906a12cc51b980523fa",
+      "bytes": 75677
+    },
+    "county_350700_full.json": {
+      "sha256": "9595bcd0e4007388c668e0a7351e0d0ecdbac0540eb7d79cb97fa78b65ebc2ab",
+      "bytes": 85908
+    },
+    "county_350800_full.json": {
+      "sha256": "65adce7f2718a9771b5001a35b615fa17354f53d26eba3f314d477e051ca7ad9",
+      "bytes": 81103
+    },
+    "county_350900_full.json": {
+      "sha256": "7bee392496cd4b6282020aa9a518981e1050a2213e1063348bd2fa8b2b677212",
+      "bytes": 98790
+    },
+    "county_360100_full.json": {
+      "sha256": "f4120c84b01dbafab71405a5559c8dd617813c52e0a51ef654ce789855d0c75a",
+      "bytes": 60919
+    },
+    "county_360200_full.json": {
+      "sha256": "01e7db1012cbc851b8675f1a3453d7ca1333cb04d20f80c89c522185022e894b",
+      "bytes": 34441
+    },
+    "county_360300_full.json": {
+      "sha256": "440851b6fe49c377942d822320949d9ceb7a8046bd9228429f47249521a48d14",
+      "bytes": 28220
+    },
+    "county_360400_full.json": {
+      "sha256": "a1f4bdd4f3933b455e752dc530a631720feaee92f189847dbd1e78ccb303b812",
+      "bytes": 113412
+    },
+    "county_360500_full.json": {
+      "sha256": "d9a0faf73d9a3b050f1ec26c0cdc62aca24c7b50001e5ef4fa1d12549de19ea7",
+      "bytes": 31329
+    },
+    "county_360600_full.json": {
+      "sha256": "be968e936b03d80635a32489446dd03c8f69243666070d626143900ae9782eb1",
+      "bytes": 34952
+    },
+    "county_360700_full.json": {
+      "sha256": "3b2064fef69db9392c263122980961d04cf45a715f1a8d6ddecfb1591aab0b4e",
+      "bytes": 149178
+    },
+    "county_360800_full.json": {
+      "sha256": "7a22500fdc36ff4054fc88838b5f22ffc4b12728b4fd4b440164a14bc9fe3fb9",
+      "bytes": 93216
+    },
+    "county_360900_full.json": {
+      "sha256": "722d942d8f07d3aa1f646699998c8b5b85d9ee76e05d33398f138763d6f23b5e",
+      "bytes": 116233
+    },
+    "county_361000_full.json": {
+      "sha256": "f61505bcf4bef083f9c7040719717a1975b30564d8fbeb2bac1c38994a7eb2c8",
+      "bytes": 57411
+    },
+    "county_361100_full.json": {
+      "sha256": "ddf4aeba72fc2544bc83d4819403ef760d7c9f232fd4d578f152c0c78efc6ace",
+      "bytes": 82881
+    },
+    "county_370100_full.json": {
+      "sha256": "4c6c88c50fae09eca5c376a4c1aea313694a908f844e4817d7cf69b83c67fbc5",
+      "bytes": 86290
+    },
+    "county_370200_full.json": {
+      "sha256": "006e71f5ec468279c9ff039e2bfe67a8c9eb804e8589425b1a49dee90d3585ff",
+      "bytes": 59987
+    },
+    "county_370300_full.json": {
+      "sha256": "9f90a62f6c8502b2019a0a6a24b8a58ef8112052adbdc8d9d97589119333f4b8",
+      "bytes": 73674
+    },
+    "county_370400_full.json": {
+      "sha256": "116c2c407e295846f97e7197e8a1db5cfb56d8cb5185cf7df873f97a86e62de1",
+      "bytes": 35283
+    },
+    "county_370500_full.json": {
+      "sha256": "b8335f3214928f15b2191931c9e2bcba335a916479a053c210d2d5179c9ed8fa",
+      "bytes": 45873
+    },
+    "county_370600_full.json": {
+      "sha256": "263bd82c991adac7bd75678db6a71e506f39f5dc6dfa3918ce5cf684f230eb3b",
+      "bytes": 61256
+    },
+    "county_370700_full.json": {
+      "sha256": "8a5a569f41b0ffb564a30da40d5fd5491f24b27a1999cc8b28d904b3273acbd0",
+      "bytes": 80091
+    },
+    "county_370800_full.json": {
+      "sha256": "475ed4e90eb1abcf24a57fb94e22aa5cffc0b6a84097091342e3068716f28752",
+      "bytes": 79594
+    },
+    "county_370900_full.json": {
+      "sha256": "8359a3f0fb0c3fa5b3bbebdf1c24eac67f6a00b21e64f8a498f8ef63dd2834db",
+      "bytes": 53869
+    },
+    "county_371000_full.json": {
+      "sha256": "3e28da9e44fa47f72f95cfae030d788ad4dc33742620e732c2cbde345ab5acf6",
+      "bytes": 47413
+    },
+    "county_371100_full.json": {
+      "sha256": "aa17d2b40ebd5aeebad8c9c393114edd0023bb1a346375904a3ae049c7a39d76",
+      "bytes": 40902
+    },
+    "county_371300_full.json": {
+      "sha256": "ebccc7e1d86a781d33ba2cb5a0de0589c6265a4d382f021a6e14c4e06b157c5d",
+      "bytes": 61847
+    },
+    "county_371400_full.json": {
+      "sha256": "20683dff367694ff24f40ae9fa5134af321e9b8600789996e8ce500ae3e8751f",
+      "bytes": 50249
+    },
+    "county_371500_full.json": {
+      "sha256": "7b06897be339ac6465f18ed624c6689e8bd6bc3a4867f9540df8138324ff10f6",
+      "bytes": 64985
+    },
+    "county_371600_full.json": {
+      "sha256": "5ff51f4259a223972fe6edff2e877047af0b46768943b28e8e2a15347e6467de",
+      "bytes": 44569
+    },
+    "county_371700_full.json": {
+      "sha256": "65a017f4eefc79fdf0e165986afc8cec5d490e09c092de4802fdd759027c8cb5",
+      "bytes": 64832
+    },
+    "county_410100_full.json": {
+      "sha256": "2a3f630fb63d4bb465610919d31b3bd2f0bebf83f03a21707ab1caaa2e2ceb2f",
+      "bytes": 105472
+    },
+    "county_410200_full.json": {
+      "sha256": "62f6793030f3682b85f0b8408a6434e9b3736a6a92cffe6caa234f109d504822",
+      "bytes": 47709
+    },
+    "county_410300_full.json": {
+      "sha256": "8fd2a44d4f43595e543ca9d0ae6c187386080b6b2d733d38d8944cc3665bc635",
+      "bytes": 84223
+    },
+    "county_410400_full.json": {
+      "sha256": "150bda432dfe422ddb6987d11c9daf929408ae4018d0db1dd1b1f495c45f17a3",
+      "bytes": 54854
+    },
+    "county_410500_full.json": {
+      "sha256": "79b0df6f2a4c08e8637a7ceb63ae16b0dbf0acdafce0d9f38a6493e3209fcfda",
+      "bytes": 62825
+    },
+    "county_410600_full.json": {
+      "sha256": "847b577fc3ff1a7f86056fa880bf3236e626574ba3a845e4c9135fbb0ca5969e",
+      "bytes": 35065
+    },
+    "county_410700_full.json": {
+      "sha256": "2808bffb328a94c4c39055989b11f6318073135d9ee5fad4feb71d8708492f6b",
+      "bytes": 61144
+    },
+    "county_410800_full.json": {
+      "sha256": "583277a6b83121e877b8cc79273ed388007702c9bd3e10a1e7e45efb59cc96b8",
+      "bytes": 66699
+    },
+    "county_410900_full.json": {
+      "sha256": "462a148707ec12d275debfca8751d7547e74fe7210143f1ad263a64fce415b80",
+      "bytes": 33418
+    },
+    "county_411000_full.json": {
+      "sha256": "61cf4f2f77614734046969aceb07012067e72eb4a8b66740afd14fc80cbba1ac",
+      "bytes": 61790
+    },
+    "county_411100_full.json": {
+      "sha256": "73e5da53e5ab10413c63c03bccc760cc37c77bdc8c48c86c7bb0c6f0bb9158af",
+      "bytes": 44291
+    },
+    "county_411200_full.json": {
+      "sha256": "8d2a883a54e0838bf044bd7c85ab1888ab7e6fe69e5c15efa30f497df04c85a5",
+      "bytes": 50834
+    },
+    "county_411300_full.json": {
+      "sha256": "eebb624a11d6fca61a1fc47041be56d76ccdf08b4a34e0c75263fe723462f661",
+      "bytes": 131107
+    },
+    "county_411400_full.json": {
+      "sha256": "8805e34231099ccf9c8a69247eb8014b2aae61030027894ca8a66b39e5ffcf39",
+      "bytes": 74167
+    },
+    "county_411500_full.json": {
+      "sha256": "35f0a08ad2c2d908af1364348d5f45eb4c17bb73918d46c376001ec617efe8f5",
+      "bytes": 106924
+    },
+    "county_411600_full.json": {
+      "sha256": "c266d9147f7e219e48c567e7e67612c6432f7eab3817492916847a64a5c1de31",
+      "bytes": 74379
+    },
+    "county_411700_full.json": {
+      "sha256": "3c95701a0cb72e5feff6274ad55a7652b999772abe8d2f8601105991e3f2bd33",
+      "bytes": 93069
+    },
+    "county_420100_full.json": {
+      "sha256": "f03865cc55cf8d4e3b6cb581fdb199ef0405bbad817c8a652e2b72414dcc5aeb",
+      "bytes": 80099
+    },
+    "county_420200_full.json": {
+      "sha256": "3cfed569e337294b8999152bfc7012768f17ec51ef483bc43d33733cdfd79c4a",
+      "bytes": 46627
+    },
+    "county_420300_full.json": {
+      "sha256": "d330d91790da5a6c0422ae34794118994d806836c2c9d1ab814e1400d6c01631",
+      "bytes": 71155
+    },
+    "county_420500_full.json": {
+      "sha256": "9a93b662424ca54b59bc909896a6b2e8b379b3c43057f0eaead10840ed82b404",
+      "bytes": 123066
+    },
+    "county_420600_full.json": {
+      "sha256": "a29ce069390a080a8e21f4e1744d8cd64d6d4df2eb0e9aa1f37621d62ea4e042",
+      "bytes": 103609
+    },
+    "county_420700_full.json": {
+      "sha256": "73498e2f0e11b99dd4879d25d38dbe6f027edd4b8a5257e25d7b1bcc41b85363",
+      "bytes": 20708
+    },
+    "county_420800_full.json": {
+      "sha256": "9d8f414f41b5c17e35a4398c9d1c56e1a554e8f05520fd5adb2b0cb2a3a67102",
+      "bytes": 66801
+    },
+    "county_420900_full.json": {
+      "sha256": "1392461a476a47071a4241fc34773caeb08bd3d71bc397126083090e82ae7e56",
+      "bytes": 61939
+    },
+    "county_421000_full.json": {
+      "sha256": "1a256dd43d7d38c9eb27d3f2ebcc9a134f460cafc6148b4a0a706cce00e87100",
+      "bytes": 67091
+    },
+    "county_421100_full.json": {
+      "sha256": "48714a53487b81869474a30ef20ecd68bde7095472711c56ad63d6a190d4bdb7",
+      "bytes": 50746
+    },
+    "county_421200_full.json": {
+      "sha256": "0b62e51956a5fa08946e754bb20a05a8b51acf1c59ff6a2cc737c4b010a4d560",
+      "bytes": 52165
+    },
+    "county_421300_full.json": {
+      "sha256": "a79f1ea0535ce9e69f19757b710245a2d8e959f3d652e0acb3e7d75488d198cd",
+      "bytes": 35101
+    },
+    "county_422800_full.json": {
+      "sha256": "e9591ca33847852f7e69809be7ba9d6da020dbc9432098f6a911c030183a1eda",
+      "bytes": 65315
+    },
+    "county_430100_full.json": {
+      "sha256": "f47f8934db64c5d1c8c8a9eaa8635ba07bd1d4dce67a7beda7306d653954b38c",
+      "bytes": 126818
+    },
+    "county_430200_full.json": {
+      "sha256": "c5c986ea9e3c9957888201de6afeb2aafac850ca1302860d09cad48fd7fba900",
+      "bytes": 37127
+    },
+    "county_430300_full.json": {
+      "sha256": "6807c3348e70ace86004b27abb419004ad35e7ac88a3720e0098e397c61896d3",
+      "bytes": 60941
+    },
+    "county_430400_full.json": {
+      "sha256": "344ce6d9c1cb8cfdbeebeb1b39e3b5168e4ac657ed7ff8c7e6147bdb7e83be8d",
+      "bytes": 107015
+    },
+    "county_430500_full.json": {
+      "sha256": "692e9f127fd15e066672ec464868b073d60b1ad9cd0927350ad637e851e553e0",
+      "bytes": 121187
+    },
+    "county_430600_full.json": {
+      "sha256": "c718f00f47f5c46bbe4455148d9b993e88a56ac635192615ae450878e4c2094b",
+      "bytes": 86165
+    },
+    "county_430700_full.json": {
+      "sha256": "6a2b12ede8a1070b9dd43e3ce6dd061c0b045f9d7c053fe013f07fd7db47d578",
+      "bytes": 68040
+    },
+    "county_430800_full.json": {
+      "sha256": "190c56d49eaa8bb3ac473f0e69c3d3916f30a09b72bf56fa72964382f8e9e4c2",
+      "bytes": 35451
+    },
+    "county_430900_full.json": {
+      "sha256": "6104e83fddffeae3f01c49214d7268763bdf0765e45cc97da42b88f7a9abb946",
+      "bytes": 63359
+    },
+    "county_431000_full.json": {
+      "sha256": "ea3759114a01e9192ec7609f370b4d898258e580e3ace8652cedfadced600026",
+      "bytes": 74481
+    },
+    "county_431100_full.json": {
+      "sha256": "97a274b79a5e5f8c15b4cadb3856edc3109879b4611acf3da6f8e33ffc91fb66",
+      "bytes": 76975
+    },
+    "county_431200_full.json": {
+      "sha256": "8988c0e3b10693b63562145b9180b94dfef297d1efec12b251a32cb03650c669",
+      "bytes": 91610
+    },
+    "county_431300_full.json": {
+      "sha256": "b8272a4ae361e2b85f4cd4fe295e6c6b4b83c48230fb637c680dcc63d538cd67",
+      "bytes": 56669
+    },
+    "county_433100_full.json": {
+      "sha256": "819ce507557c989df8586b53932996f285ff82afb08bc6be3bbac26594802a87",
+      "bytes": 49493
+    },
+    "county_440100_full.json": {
+      "sha256": "c2793000c61b805e1435f5c7282317531ce8a06ac02d9e9a7bb5f1f891522b97",
+      "bytes": 63494
+    },
+    "county_440200_full.json": {
+      "sha256": "de6d4e9aad9e7bfa516d13055cef4aa454f43ca08908dc551863585326e87cd8",
+      "bytes": 113689
+    },
+    "county_440300_full.json": {
+      "sha256": "e346a6cb0d5c482bf52fd0b845d0cda8c03a6ab666ce310afd3292a4d1899fa8",
+      "bytes": 69077
+    },
+    "county_440400_full.json": {
+      "sha256": "80f0d1d5141d197b3a96b699876547246491fe8e89d36fd8bb3c93adef3a9193",
+      "bytes": 46523
+    },
+    "county_440500_full.json": {
+      "sha256": "68dd5d4ea5abc5d82edf6af530b0a68b32a99ef32a591395fa990896ed063a39",
+      "bytes": 41757
+    },
+    "county_440600_full.json": {
+      "sha256": "d21e3005fef23b6f37d17ca0a1dbce8bd6c5d9af23241ddb1e4413b2396e1571",
+      "bytes": 45161
+    },
+    "county_440700_full.json": {
+      "sha256": "f51cc628e45a2d57d0c80bd6a3ae225044bde4a313c466c3d9366660ca566d5c",
+      "bytes": 94556
+    },
+    "county_440800_full.json": {
+      "sha256": "23615a7441811b701cb003d2bfcf443c630870990a36d2e9313d66b27d41ec30",
+      "bytes": 106225
+    },
+    "county_440900_full.json": {
+      "sha256": "1de54f01930e7d9f8c5a1ceb27d414cf471c218d90e9a053fa84bdcd92314d62",
+      "bytes": 80911
+    },
+    "county_441200_full.json": {
+      "sha256": "f75a750fd90a814f3a21bc1223f8ae6ff9f25c4af85ff559398527ca8dc5b9d1",
+      "bytes": 94912
+    },
+    "county_441300_full.json": {
+      "sha256": "705304972431a837f31195ba7651f9905a36ef24a58329c9f5c22ede68d43319",
+      "bytes": 81451
+    },
+    "county_441400_full.json": {
+      "sha256": "c29bd43f4aa4eb5918ba6eba2a356156083af2369238c495e0248ce25beec372",
+      "bytes": 100575
+    },
+    "county_441500_full.json": {
+      "sha256": "637156fcf038e6392e311a9ac8ae3967c9cd731282d41b4e202305a48ebd5afe",
+      "bytes": 24017
+    },
+    "county_441600_full.json": {
+      "sha256": "09553b543816546c5dcb78bec085ca4782d980c8fe16be714f34a10bd57c2ad0",
+      "bytes": 87084
+    },
+    "county_441700_full.json": {
+      "sha256": "80cc6048c71ba2f1c309aaafe625f0cdef3afb7d7ab38a2fd55a032da4d4f7f7",
+      "bytes": 48604
+    },
+    "county_441800_full.json": {
+      "sha256": "ac9dcdf20f8b2957b7616c9a69bc592cd862db72ce688262009d81e3098b38b0",
+      "bytes": 94091
+    },
+    "county_445100_full.json": {
+      "sha256": "07b8581142ec0b83a63107224448c0b0d53e5c7ee00286860925f5902a414b1e",
+      "bytes": 40712
+    },
+    "county_445200_full.json": {
+      "sha256": "894624dc613c61cb2b8f1dcf729bd2f62649cd9dd988b62278506a35dfeb5e9b",
+      "bytes": 64779
+    },
+    "county_445300_full.json": {
+      "sha256": "a4fb0a141da2fadadfde02d243941b6de854661f477d82b3c71936cee682955d",
+      "bytes": 75026
+    },
+    "county_450100_full.json": {
+      "sha256": "b414b9d77dec0379cb8b6aae9ae4bac43b1c15f680990c65035273a4b9291b61",
+      "bytes": 94398
+    },
+    "county_450200_full.json": {
+      "sha256": "980d57680a0e2f1985b78840efdd1ad5cfe0f4dadc86c4c19b17defd0218be56",
+      "bytes": 65915
+    },
+    "county_450300_full.json": {
+      "sha256": "576809eb06789811b2cdcf84a86074bc3433d25ca99e381af62cb6d110c9b542",
+      "bytes": 84490
+    },
+    "county_450400_full.json": {
+      "sha256": "71feff288dd9c412701f2b94ff7b6c3c6eecc33627752f88c7f31b017d943d20",
+      "bytes": 45765
+    },
+    "county_450500_full.json": {
+      "sha256": "52a296b0a88c9c1fa39c8c110f48b76b25a6b1a0b0b8ce8b9bd0f455519f259d",
+      "bytes": 22774
+    },
+    "county_450600_full.json": {
+      "sha256": "3bd132caad8eba31418dc75b06d475c69603615dcb64aa545fe3107b3347c4fe",
+      "bytes": 43174
+    },
+    "county_450700_full.json": {
+      "sha256": "8fe555046205a26ea84c4b45d4f13b564b4f235b1001a90d6e799d7edf1a8b87",
+      "bytes": 61930
+    },
+    "county_450800_full.json": {
+      "sha256": "e4169aabd2b7df3b2ee5df862d932e4188a890e60c760ebe197c74c95852bc28",
+      "bytes": 60942
+    },
+    "county_450900_full.json": {
+      "sha256": "86b0aca2307f2678ba0fefa49a0cb9454b9d4495bc0f6414ccbf406538722197",
+      "bytes": 80099
+    },
+    "county_451000_full.json": {
+      "sha256": "9923c8d586f3021b0a271ad892fe6be9961d41e05910570fb139f8c7404e6a62",
+      "bytes": 82972
+    },
+    "county_451100_full.json": {
+      "sha256": "2e8c488b58ed61c17f225fea46ed053ab70cbc09c6d4b1549d1fb3b0596cc52a",
+      "bytes": 61736
+    },
+    "county_451200_full.json": {
+      "sha256": "426f5621f0c5c529f375a602fd6cf025c3ae62171cedfaa809d134b64118efc5",
+      "bytes": 91016
+    },
+    "county_451300_full.json": {
+      "sha256": "ee6d75253496c981720ea2e863e55adbcc5e9400f736665055679ae34189e949",
+      "bytes": 77808
+    },
+    "county_451400_full.json": {
+      "sha256": "5937303202b368d15d98e8f8e77dfee7ce829d74887c5fd302a74b385c9217d5",
+      "bytes": 83623
+    },
+    "county_460100_full.json": {
+      "sha256": "b6acd61c6633882dc0dcb31786e3ea96e59d5e9f94cd8da81f8ae7b5da3317e6",
+      "bytes": 34714
+    },
+    "county_460200_full.json": {
+      "sha256": "43582b50fa3943c9e3c1a9fc5ee99020db96c70c117d1741e6ec69c72b6e566d",
+      "bytes": 31583
+    },
+    "county_460300_full.json": {
+      "sha256": "65c171226c7198498ea4ede4eb39825f0cb74e3af05cb83869bc82d66a6a6e22",
+      "bytes": 14496
+    },
+    "county_510100_full.json": {
+      "sha256": "e5a5f52b38c8b073805da73bac7adad362ecc66d9f64a790aef20d6ec00cd9e1",
+      "bytes": 149259
+    },
+    "county_510300_full.json": {
+      "sha256": "78cba41f9e8ca8924ba031390f67d7a28331bdb7a1518294710a6e336deeae04",
+      "bytes": 135345
+    },
+    "county_510400_full.json": {
+      "sha256": "5aa6eeddf72dc41ea2832a1fa22f3ade9bfdd20ffa5bd61629e2b737e26a8980",
+      "bytes": 45056
+    },
+    "county_510500_full.json": {
+      "sha256": "b9e723b10b8ae6f935773d37f614cc77746c842bd63db02052309ba42f5baf69",
+      "bytes": 85368
+    },
+    "county_510600_full.json": {
+      "sha256": "80158cf83e656ec07e9d13931956cb98feeaf9488ebc3cba00ea7c30d55fc716",
+      "bytes": 57902
+    },
+    "county_510700_full.json": {
+      "sha256": "76268cf19162eac2cf6ee85ac6c9da9f3a36d95d572e7fdbf9c7359aedda40fd",
+      "bytes": 73972
+    },
+    "county_510800_full.json": {
+      "sha256": "fb662ae19d90e7eb6e910050d8e934df57450d4c8b0769e3ad2adb4162c7022e",
+      "bytes": 109131
+    },
+    "county_510900_full.json": {
+      "sha256": "cf255d319d8c10f6f9bda28872cb98e29828e68bcf48766f4a626b8c91ccd7e7",
+      "bytes": 56607
+    },
+    "county_511000_full.json": {
+      "sha256": "e74cfe2915c9660de6500210c6072f594c355818e076ef6858851f30dbd8cab8",
+      "bytes": 57101
+    },
+    "county_511100_full.json": {
+      "sha256": "49a23c954e26301915726d50a06b21d6353309bb51f6d6330efb4631001a8158",
+      "bytes": 94818
+    },
+    "county_511300_full.json": {
+      "sha256": "856bd12d34c7dd4394999a125af3a378d2dd41d8c3354589375af657c5d452e1",
+      "bytes": 122731
+    },
+    "county_511400_full.json": {
+      "sha256": "80555687b4465206ebc6a539587f8e88ec9e3431b961419fc63088345085df36",
+      "bytes": 54336
+    },
+    "county_511500_full.json": {
+      "sha256": "9b0f502e38872fe7fbf4df5e77630f5064dc38bf58597540b28dd7231e6d18fe",
+      "bytes": 118596
+    },
+    "county_511600_full.json": {
+      "sha256": "df064742927661e6c329b7a865f6933cbb91751b26b3ffe75f0c2f3de01d704e",
+      "bytes": 95712
+    },
+    "county_511700_full.json": {
+      "sha256": "90a7ee8e5eda19a72ec269453e224fcd0c2df5153c9100475b1c00af6ed8181a",
+      "bytes": 61397
+    },
+    "county_511800_full.json": {
+      "sha256": "f7bb06f107b3948c3e1c40404da9b7fcdfdcffe35c3c1102c3db05a468e414ae",
+      "bytes": 37019
+    },
+    "county_511900_full.json": {
+      "sha256": "1d8a22427010daff8a137967ce4109f0ce5d242981b44df8b9a89e9367a73101",
+      "bytes": 83859
+    },
+    "county_512000_full.json": {
+      "sha256": "500c9c44476ff7f7838ddd98b4ede7acb1f9e754b4bf97eb3c1f9745e8d6de49",
+      "bytes": 45307
+    },
+    "county_513200_full.json": {
+      "sha256": "a98c50c6af840d4029279c86c224fb7bb19809557506bed12de673a09d176b63",
+      "bytes": 82793
+    },
+    "county_513300_full.json": {
+      "sha256": "c9473a4726ab6253976c83f8ba6aaca665276c44fcd9d5f68f976f9a8613fc1a",
+      "bytes": 122595
+    },
+    "county_513400_full.json": {
+      "sha256": "4588ed5e240618a7bbd69ced63d45506b6e07e3707266ea37b546702bf3e3c3e",
+      "bytes": 112230
+    },
+    "county_520100_full.json": {
+      "sha256": "5c4a19cb6cb5d44d344451c33fb2126bc9cf325839a04d7c8a0131bfc659a045",
+      "bytes": 65851
+    },
+    "county_520200_full.json": {
+      "sha256": "586fe76b587b96492b0220b736f62e28a02040a55428f5e6bb645a1fc5f5c54f",
+      "bytes": 38354
+    },
+    "county_520300_full.json": {
+      "sha256": "4dd0f0b3125173df4602cc4f75bcbfca7bb5df53a475651f6e7319c0019bf841",
+      "bytes": 104597
+    },
+    "county_520400_full.json": {
+      "sha256": "f89a0b89a65e6a39a4a19ef5bf478ae9183ac22345cd64a756aa2c6e5421e8d2",
+      "bytes": 48499
+    },
+    "county_520500_full.json": {
+      "sha256": "7ecd2741c5210eeb44f7f6f984833826518dd5e2a3e62cbb58828dc1d52c2ea2",
+      "bytes": 84335
+    },
+    "county_520600_full.json": {
+      "sha256": "0464bcdd5fb65c60cb6a274ce58b3e746b8a3ff6fe8a9e72646c98201773af22",
+      "bytes": 65139
+    },
+    "county_522300_full.json": {
+      "sha256": "ab757d89d4063f397d3224e399edf26e8074c6c93b6ddc9198e0d12d4fa0f1cb",
+      "bytes": 61499
+    },
+    "county_522600_full.json": {
+      "sha256": "e463875598a7d6867b3d3f050721c0a50bb1e6b6fa40756971895a9110cfc070",
+      "bytes": 105987
+    },
+    "county_522700_full.json": {
+      "sha256": "9e3f6a6e2a01fd0a74399b9079b1777d1be5995d32c65dd4be4c3cb173c69775",
+      "bytes": 75265
+    },
+    "county_530100_full.json": {
+      "sha256": "690b3c71ce619225e2672ba388d4c1d618235d14bcb96cf3705b830a544977a8",
+      "bytes": 84589
+    },
+    "county_530300_full.json": {
+      "sha256": "bd37926aa632521f63b733fdf572e5988633444b7fc493cf4dd27dfc7bbfe470",
+      "bytes": 81988
+    },
+    "county_530400_full.json": {
+      "sha256": "63dd61afbc25244b395f43b8295aa12f6917c828fb579cbd2dc698092452fd2f",
+      "bytes": 96045
+    },
+    "county_530500_full.json": {
+      "sha256": "82e5b9ff3c8f252338706813e6d3eeaee6c59ccea2328028b0d4b46d7238ba72",
+      "bytes": 60892
+    },
+    "county_530600_full.json": {
+      "sha256": "b25e33cec38572f76eb08858ff54218b51442a9323032c705489d866f079ffca",
+      "bytes": 80095
+    },
+    "county_530700_full.json": {
+      "sha256": "ab090e9493e6bcdeaef9638be2d9a7e25e85d89871045fc2e6343c7e6c602de6",
+      "bytes": 55132
+    },
+    "county_530800_full.json": {
+      "sha256": "655eefdde2ad351d0aefe2cfd6772a827bfe2291286a983f4cdb695c6b482bd7",
+      "bytes": 80978
+    },
+    "county_530900_full.json": {
+      "sha256": "8459d48b2d1f2825556148967a32e40e976f408193657fa57ceee11ddb410a84",
+      "bytes": 50937
+    },
+    "county_532300_full.json": {
+      "sha256": "b783af17abc8b31c89bcd76d12a14884960e2bab5ee6b731841723bea7cb7055",
+      "bytes": 94123
+    },
+    "county_532500_full.json": {
+      "sha256": "60a3e178a6255083da1d4d9670809f1a393642bab77ccca94fa12d49ed06ab0c",
+      "bytes": 98065
+    },
+    "county_532600_full.json": {
+      "sha256": "a97284c52d10086759d32429fa07b2b6010deccf817e9ecb8e22a2a5d50b643d",
+      "bytes": 62985
+    },
+    "county_532800_full.json": {
+      "sha256": "5f5b511c3dc9c56aa3d1095b473a6f5fffeaae9574187aa0a1c50492dc2a6efe",
+      "bytes": 52085
+    },
+    "county_532900_full.json": {
+      "sha256": "a8302dd2eaed8ec54f33b86231627573be67bf5bee638afd59ad44261178eb53",
+      "bytes": 90039
+    },
+    "county_533100_full.json": {
+      "sha256": "bfac3841ac81b795b931cd698d644e3fae518983fabdcad629cc0f0936866ea3",
+      "bytes": 51649
+    },
+    "county_533300_full.json": {
+      "sha256": "ee5fc615a098e5640a054e9ca276f566a2d918fe430c6c64316a90d314079877",
+      "bytes": 33032
+    },
+    "county_533400_full.json": {
+      "sha256": "0b943284911d888419b09e70ac82a1eee5a950e8d3933925e1bd397cb9c228f4",
+      "bytes": 38531
+    },
+    "county_540100_full.json": {
+      "sha256": "9a3f80aba79831fb03c4de72badcf33a521042cefae26105fc923f256fe3f2d3",
+      "bytes": 48270
+    },
+    "county_540200_full.json": {
+      "sha256": "e2987b1bce569afa1da3b05196e199bc4357f8383c1631d7e4713c421fe44934",
+      "bytes": 124421
+    },
+    "county_540300_full.json": {
+      "sha256": "ee46020d825b92a09cf95420f189375cb6e41b2d8526d457b2e8d64d54463adb",
+      "bytes": 84897
+    },
+    "county_540400_full.json": {
+      "sha256": "27bef3f22a43499901c35d7835921397d35486c84bf09e388e52cd529d33f66a",
+      "bytes": 95121
+    },
+    "county_540500_full.json": {
+      "sha256": "e1d2b4e1ad09cb73c41bea4dac44fd8582612fc293fbeafb43031d88a4e45de8",
+      "bytes": 82627
+    },
+    "county_540600_full.json": {
+      "sha256": "a92793bbcc4696ec2ab1982cc93537390461b492e05d3c242da67220631d7582",
+      "bytes": 78536
+    },
+    "county_542500_full.json": {
+      "sha256": "da68c94cdc219db95ea6fe6c075713214abeea9ea31e059f2323e4fd89827f4e",
+      "bytes": 105557
+    },
+    "county_610100_full.json": {
+      "sha256": "17b60bf21415fc8ff30a4b4aa63edbc1ea8de1dc149fc0ddbf330517a6ebe317",
+      "bytes": 77362
+    },
+    "county_610200_full.json": {
+      "sha256": "3fd39041e7b3a2a0c076992d1154484c9c21bcd7f4295783ab804daf38171536",
+      "bytes": 51853
+    },
+    "county_610300_full.json": {
+      "sha256": "c49c4f21cbb9beef7298123b892172f59ef6cb14b23903a8fa117771c3e7fcae",
+      "bytes": 123031
+    },
+    "county_610400_full.json": {
+      "sha256": "afad0f302a2e4fff6309582729121899ebeab7b9da725032faf4d77be9622a3b",
+      "bytes": 93015
+    },
+    "county_610500_full.json": {
+      "sha256": "2f51d995b8e31643a933e76741d5f7e6d060ed20c36db3f25fda3f625f3f57d2",
+      "bytes": 53373
+    },
+    "county_610600_full.json": {
+      "sha256": "75dc00682a5537400af33f1f843a0acae5dc16eeebfd2aa8bdfb5d6d1e30ef71",
+      "bytes": 101055
+    },
+    "county_610700_full.json": {
+      "sha256": "78f9a1a3f7419e268ecd3207247ffd77f17672a61dccc1f806d148ce663a260f",
+      "bytes": 76801
+    },
+    "county_610800_full.json": {
+      "sha256": "accded40abe1d14594001ea4f5aba012f22e1753eeb64d19a157a6cf1131a5ae",
+      "bytes": 98165
+    },
+    "county_610900_full.json": {
+      "sha256": "cccf3fd3bce3859819522c517f46a29d31877c06b8f9281b37970a3e2ad15ab2",
+      "bytes": 58904
+    },
+    "county_611000_full.json": {
+      "sha256": "cab0a43501cec6f556c39b9c9d0a6f6ae4789a518a72a7201997610b5d48d35d",
+      "bytes": 64641
+    },
+    "county_620100_full.json": {
+      "sha256": "07ebb282943e632d051f6666abb06f348ba3144a154e5f9c72fd8f6fbd2ac069",
+      "bytes": 94009
+    },
+    "county_620300_full.json": {
+      "sha256": "c698c63d4e8d99328f7e4b68acc8352c4017b1b6d43ae124bedd5a81e2330cba",
+      "bytes": 21132
+    },
+    "county_620400_full.json": {
+      "sha256": "69e4c984fa30d15795605fe33ff960ab10bda8a7e6decc8c8531ddb0458c88d5",
+      "bytes": 52976
+    },
+    "county_620500_full.json": {
+      "sha256": "80e979c1b3f1a01ddddb2eeea13f302d086214e0e0cdc49a607c00aaaa3801fa",
+      "bytes": 90333
+    },
+    "county_620600_full.json": {
+      "sha256": "81e7201fcd998cccd4f79f90a478a91d3bf82d38740ce38b68eba849ad52d6a8",
+      "bytes": 43198
+    },
+    "county_620700_full.json": {
+      "sha256": "c8ba7ff1203b01584079825a016235e64f01aeca622402fead3b0fb557144e60",
+      "bytes": 61346
+    },
+    "county_620800_full.json": {
+      "sha256": "c1fe55255bb2ab753aa699952a9d84ad987a2de459f9ccb09061633d1f413158",
+      "bytes": 76642
+    },
+    "county_620900_full.json": {
+      "sha256": "494d34fdd16d22da7cbb13bbd26eaa44df0f2e396668faecfb027313cca37754",
+      "bytes": 47296
+    },
+    "county_621000_full.json": {
+      "sha256": "2b14454ce5d0602e697467ca0d7068d79bed8a69918d3d0a89f34642380bda36",
+      "bytes": 74744
+    },
+    "county_621100_full.json": {
+      "sha256": "76db9d4cdfec2d3f7b1f4cd2144c06486a8f1a8e5843f2bf63af058d342fd98e",
+      "bytes": 50921
+    },
+    "county_621200_full.json": {
+      "sha256": "5b95eb3b6891bc5dacc1556adb848346ffd714689afc481b42cfb2b8ee0ff7dc",
+      "bytes": 75217
+    },
+    "county_622900_full.json": {
+      "sha256": "c48f95c30237ccdedbb301bd52d41b564d5617f23975c148d8f98c39e6368a2f",
+      "bytes": 57188
+    },
+    "county_623000_full.json": {
+      "sha256": "719281047d6f617c97f6c17308779c0414fc5cac85038738062af31fdbfda1b7",
+      "bytes": 92518
+    },
+    "county_630100_full.json": {
+      "sha256": "f05995e0bf6c83f2311fdddd54af582d7157d78e39207d15fbc5a204e1d20657",
+      "bytes": 50635
+    },
+    "county_630200_full.json": {
+      "sha256": "ac7c0e0ad470a08319621f3e853f9799bb11dbe00da3b623672bb02d8fa8688a",
+      "bytes": 38341
+    },
+    "county_632200_full.json": {
+      "sha256": "bdf90233477e0683007089daf7c2ec73c03891e63bf30d2334c564f42ccd439b",
+      "bytes": 47529
+    },
+    "county_632300_full.json": {
+      "sha256": "0d5aa6e1967d58a141f37e86eee521a43e5470df26c0f88308a548c8df5ef108",
+      "bytes": 38737
+    },
+    "county_632500_full.json": {
+      "sha256": "5e0f73290bdcaa6929e3116699ebd79f9a6dd85905064faa4e72ddd92874a85a",
+      "bytes": 49077
+    },
+    "county_632600_full.json": {
+      "sha256": "3b5df30c5b173a52a1870e0936816f7754447aa79e96ef3ed575e4ea088fc482",
+      "bytes": 95250
+    },
+    "county_632700_full.json": {
+      "sha256": "cb98e2615944362607a48760ce8a07bcd1a068d9432593433565ce7208eefdaf",
+      "bytes": 95016
+    },
+    "county_632800_full.json": {
+      "sha256": "f583b31b7cfbe064ce647cb92600f32cccfea8d5759d203612e31e6b9eb0ade0",
+      "bytes": 50046
+    },
+    "county_640100_full.json": {
+      "sha256": "2912071e7d83b32fe7a621bc9490318fa07a84b9cac1f6a2d6b5ec43aad263c5",
+      "bytes": 31112
+    },
+    "county_640200_full.json": {
+      "sha256": "95a2984b18d1c0ef4494df5ad71acb90903680834cb35ca9c42ac4643127daee",
+      "bytes": 19409
+    },
+    "county_640300_full.json": {
+      "sha256": "7f7fde54e61497905fa11f6a45a60d96f0ecc344870c45f2d04cd3f0bbaf24e7",
+      "bytes": 42908
+    },
+    "county_640400_full.json": {
+      "sha256": "eecdf5587e9f569d0431689ee2d8c2c92cdc2a72b5f3e2649d7f5cf93de2a464",
+      "bytes": 67542
+    },
+    "county_640500_full.json": {
+      "sha256": "ffed0ce2c1c8531f023605bdee84e2d8059a82b2a042610d73fea7222e43bae9",
+      "bytes": 32727
+    },
+    "county_650100_full.json": {
+      "sha256": "b13c3e9887cc07a7b981a05c8515dcfb3b35cefb44c54006edc79571b2e3c704",
+      "bytes": 42411
+    },
+    "county_650200_full.json": {
+      "sha256": "82598341d2b760dcece00d7e6ca310b00fddb90e771cc5f60fcc67e05c3d0e01",
+      "bytes": 16856
+    },
+    "county_650400_full.json": {
+      "sha256": "9d6ab9aef4b801573bf57df214dd35088bbaa37f40856613c29d60419ae5cc83",
+      "bytes": 49536
+    },
+    "county_650500_full.json": {
+      "sha256": "321ee52fb0a6f5684f5082468583b6b840c334bcf3b7234d49c7b858c6766df3",
+      "bytes": 28352
+    },
+    "county_652300_full.json": {
+      "sha256": "090389fa1bbc7bd74262e8717c9ca5b0489f7c9e3557e9a3c641b9272f42e99a",
+      "bytes": 74885
+    },
+    "county_652700_full.json": {
+      "sha256": "8080b9d303ceb6965f523c92bb901e61fce20b0569f36b2cae6b7a8fe2d5f853",
+      "bytes": 82464
+    },
+    "county_652800_full.json": {
+      "sha256": "4dadaf284d63a3b138b2d30bfe09f2290bbd460f925a2647655540b2e8af8a54",
+      "bytes": 54159
+    },
+    "county_652900_full.json": {
+      "sha256": "b0fe5dde21b90ead30fee4cb4ee00a250aac4d6c24740a0e5fff2b13becf18e0",
+      "bytes": 58784
+    },
+    "county_653000_full.json": {
+      "sha256": "aaaf576d4f75063378f89934411110a47201796f905edfbf84d434a10717acbb",
+      "bytes": 38963
+    },
+    "county_653100_full.json": {
+      "sha256": "c79376a512bfa012b3bc766640f9113b6646a4df145dd9f3eef3ab0333567d38",
+      "bytes": 72667
+    },
+    "county_653200_full.json": {
+      "sha256": "430744f6f71fb672c80d5defc8b5fd68e615d5ed8193bd380b4a1e873573bd5e",
+      "bytes": 68825
+    },
+    "county_654000_full.json": {
+      "sha256": "bf130f74c339dd083c88cd3096b0ff869928c0d4b40f59430b08bf5968782d01",
+      "bytes": 117667
+    },
+    "county_654200_full.json": {
+      "sha256": "eb546e3844517f52ed9cf0edbd95991172d55e8cb2316e1ca32cca46c92c22bb",
+      "bytes": 46281
+    },
+    "county_654300_full.json": {
+      "sha256": "d299b50e6bcf1782188f134e015cdb5d762d285741e084955517c8898085a05e",
+      "bytes": 54381
     }
   }
 }

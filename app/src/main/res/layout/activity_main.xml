@@ -43,6 +43,17 @@
                 android:text="@string/status_disconnected"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/mapChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:text="地图：标准"
+                android:textColor="#1565C0"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <Button

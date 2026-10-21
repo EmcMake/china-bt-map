@@ -25,6 +25,8 @@ public final class TrackStore {
     private double[] rawLons = new double[1024];
     private double[] mapLats = new double[1024];
     private double[] mapLons = new double[1024];
+    private double[] wgsLats = new double[1024];
+    private double[] wgsLons = new double[1024];
     private double[] alts = new double[1024];
     private float[] accuracies = new float[1024];
     private boolean[] hasAlt = new boolean[1024];
@@ -74,6 +76,9 @@ public final class TrackStore {
             rawLons[size] = lon;
             mapLats[size] = map[0];
             mapLons[size] = map[1];
+            double[] wgs = CoordSystems.toWgs84(datum, lat, lon);
+            wgsLats[size] = wgs[0];
+            wgsLons[size] = wgs[1];
             alts[size] = alt;
             hasAlt[size] = altValid;
             accuracies[size] = (float) accuracy;
@@ -93,6 +98,8 @@ public final class TrackStore {
         System.arraycopy(rawLons, drop, rawLons, 0, size - drop);
         System.arraycopy(mapLats, drop, mapLats, 0, size - drop);
         System.arraycopy(mapLons, drop, mapLons, 0, size - drop);
+        System.arraycopy(wgsLats, drop, wgsLats, 0, size - drop);
+        System.arraycopy(wgsLons, drop, wgsLons, 0, size - drop);
         System.arraycopy(alts, drop, alts, 0, size - drop);
         System.arraycopy(accuracies, drop, accuracies, 0, size - drop);
         System.arraycopy(hasAlt, drop, hasAlt, 0, size - drop);
@@ -111,6 +118,8 @@ public final class TrackStore {
         rawLons = grow(rawLons, cap);
         mapLats = grow(mapLats, cap);
         mapLons = grow(mapLons, cap);
+        wgsLats = grow(wgsLats, cap);
+        wgsLons = grow(wgsLons, cap);
         alts = grow(alts, cap);
         accuracies = grow(accuracies, cap);
         times = grow(times, cap);
@@ -147,6 +156,9 @@ public final class TrackStore {
                 double[] map = CoordSystems.toMap(datum, rawLats[i], rawLons[i]);
                 mapLats[i] = map[0];
                 mapLons[i] = map[1];
+                double[] wgs = CoordSystems.toWgs84(datum, rawLats[i], rawLons[i]);
+                wgsLats[i] = wgs[0];
+                wgsLons[i] = wgs[1];
                 datums[i] = (byte) datum;
             }
             datumEpoch++;
@@ -186,6 +198,16 @@ public final class TrackStore {
 
     public synchronized double mapLon(int i) {
         return mapLons[i];
+    }
+
+    /** 第 i 个点的 WGS-84 纬度（在线影像/卫星底图使用）。 */
+    public synchronized double wgsLat(int i) {
+        return wgsLats[i];
+    }
+
+    /** 第 i 个点的 WGS-84 经度（在线影像/卫星底图使用）。 */
+    public synchronized double wgsLon(int i) {
+        return wgsLons[i];
     }
 
     public synchronized double alt(int i) {

@@ -10,7 +10,6 @@ import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
-import android.view.ScaleGestureDetector;
 import android.view.View;
 
 import com.btmap.china.track.CoordSystems;
@@ -52,7 +51,8 @@ public class ChinaMapView extends View {
     private static final double FIT_LAT_MAX = 54.0;
 
     /** 约 10 米/像素。 */
-    private static final double MAX_WORLD_PX = 4_000_000;
+    private static final double MAX_WORLD_PX = 8_000_000;   // 矢量约 5m/px
+    private static final double MAX_RASTER_PX = 256.0 * (1 << 17); // z17，约 1m/px
 
     private static final long PULSE_MS = 1800;
 
@@ -63,11 +63,13 @@ public class ChinaMapView extends View {
 
     private final List<DrawnFeature> provinces = new ArrayList<>();
     private final List<DrawnFeature> cities = new ArrayList<>();
+    private final List<DrawnFeature> counties = new ArrayList<>();
     private DrawnFeature nineDash;
 
     private final Paint pLandFill = new Paint();
     private final Paint pProvBorder = new Paint();
     private final Paint pCityBorder = new Paint();
+    private final Paint pCountyBorder = new Paint();
     private final Paint pGrid = new Paint();
     private final Paint pGridText = new Paint();
     private final Paint pNineDash = new Paint();
@@ -94,6 +96,8 @@ public class ChinaMapView extends View {
     private final Paint pOffText = new Paint();
     private final Paint pScaleBar = new Paint();
     private final Paint pScaleBarText = new Paint();
+    private final Paint pScaleBg = new Paint();
+    private final Paint pAttrBg = new Paint();
     private final Paint pHint = new Paint();
     private final Paint pAttribution = new Paint();
     private final Paint pCompass = new Paint();
@@ -108,6 +112,14 @@ public class ChinaMapView extends View {
     private int trackSynced;
     private long trackDroppedSynced;
     private int trackEpochSynced;
+    private int trackTypeSynced = -1;
+
+    private int mapType = TileSource.TYPE_VECTOR;
+    private boolean rasterMode;
+    private boolean rasterGcj;
+    private double rasterMaxScale = MAX_RASTER_PX;
+    private RasterTileLayer rasterLayer;
+    private String mapAttribution = TileSource.ATTR_VECTOR;
 
     private double scale = 1;
     private double offsetX;
@@ -121,19 +133,29 @@ public class ChinaMapView extends View {
     private boolean autoZoomed;
 
     private boolean cityVisible = true;
+    private boolean countyVisible = true;
     private boolean labelsVisible = true;
     private boolean gridVisible = true;
     private boolean accuracyVisible = true;
     private boolean bubbleVisible = true;
 
-    private double scaleAtStart = 1;
-    private double offsetXAtStart;
-    private double offsetYAtStart;
-    private float focusXAtStart;
-    private float focusYAtStart;
+    private boolean pinching;
+    private long tapDownTime;
+    private long lastTapUpTime;
+    private float tapDownX;
+    private float tapDownY;
+    private float lastTapX;
+    private float lastTapY;
+    private boolean tapMoved;
+    private int touchSlop;
+    private float pinchStartSpan;
+    private double pinchStartScale;
+    private double pinchStartOffsetX;
+    private double pinchStartOffsetY;
+    private float pinchFocusX;
+    private float pinchFocusY;
 
     private GestureDetector gestureDetector;
-    private ScaleGestureDetector scaleDetector;
     private ValueAnimator zoomAnimator;
 
     private OnCoordinatePickListener pickListener;
@@ -156,6 +178,8 @@ public class ChinaMapView extends View {
 
     private void init() {
         density = getResources().getDisplayMetrics().density;
+        touchSlop = android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop();
+        rasterLayer = new RasterTileLayer(getContext(), this);
         setBackgroundColor(COLOR_SEA);
 
         pLandFill.setStyle(Paint.Style.FILL);
@@ -170,6 +194,10 @@ public class ChinaMapView extends View {
         pCityBorder.setStyle(Paint.Style.STROKE);
         pCityBorder.setColor(0xFFB9AB8F);
         pCityBorder.setAntiAlias(true);
+
+        pCountyBorder.setStyle(Paint.Style.STROKE);
+        pCountyBorder.setColor(0xFFCBBFA6);
+        pCountyBorder.setAntiAlias(true);
 
         pGrid.setStyle(Paint.Style.STROKE);
         pGrid.setColor(COLOR_GRID);
@@ -288,6 +316,10 @@ public class ChinaMapView extends View {
         pScaleBar.setAntiAlias(true);
 
         pScaleBarText.setColor(0xFF37474F);
+        pScaleBg.setColor(0xE6FFFFFF);
+        pScaleBg.setStyle(Paint.Style.FILL);
+        pAttrBg.setColor(0xD9FFFFFF);
+        pAttrBg.setStyle(Paint.Style.FILL);
         pScaleBarText.setTextSize(dp(10f));
         pScaleBarText.setAntiAlias(true);
 
@@ -336,12 +368,6 @@ public class ChinaMapView extends View {
             }
 
             @Override
-            public boolean onDoubleTap(MotionEvent e) {
-                animateZoom(e.getX(), e.getY(), 2.0);
-                return true;
-            }
-
-            @Override
             public void onLongPress(MotionEvent e) {
                 if (offscreenVisible && offscreenRect.contains(e.getX(), e.getY())) {
                     centerOnLatest();
@@ -356,32 +382,6 @@ public class ChinaMapView extends View {
 
             @Override
             public boolean onDown(MotionEvent e) {
-                cancelZoomAnimation();
-                return true;
-            }
-        });
-
-        scaleDetector = new ScaleGestureDetector(getContext(), new ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            @Override
-            public boolean onScaleBegin(ScaleGestureDetector detector) {
-                cancelZoomAnimation();
-                scaleAtStart = scale;
-                offsetXAtStart = offsetX;
-                offsetYAtStart = offsetY;
-                focusXAtStart = detector.getFocusX();
-                focusYAtStart = detector.getFocusY();
-                return true;
-            }
-
-            @Override
-            public boolean onScale(ScaleGestureDetector detector) {
-                double target = clampScale(scaleAtStart * detector.getScaleFactor(), true);
-                double k = target / scaleAtStart;
-                offsetX = focusXAtStart - (focusXAtStart - offsetXAtStart) * k;
-                offsetY = focusYAtStart - (focusYAtStart - offsetYAtStart) * k;
-                scale = target;
-                clampPan();
-                invalidate();
                 return true;
             }
         });
@@ -402,6 +402,8 @@ public class ChinaMapView extends View {
                 provinces.add(d);
             } else if (f.level == MapData.LEVEL_CITY) {
                 cities.add(d);
+            } else if (f.level == MapData.LEVEL_COUNTY) {
+                counties.add(d);
             } else {
                 nineDash = d;
             }
@@ -410,17 +412,25 @@ public class ChinaMapView extends View {
 
     private static final class DrawnFeature {
         final MapData.Feature feature;
-        final Path detail;
-        final Path overview;
+        private Path detail;
+        private Path overview;
 
         DrawnFeature(MapData.Feature feature) {
             this.feature = feature;
-            this.detail = buildPath(feature, feature.detail);
-            this.overview = buildPath(feature, feature.overview);
         }
 
-        Path pathFor(boolean useDetail) {
-            return useDetail ? detail : overview;
+        /** 懒构建：县级有 2,700+ 要素，启动时只构建真正要画的 Path。 */
+        synchronized Path pathFor(boolean useDetail) {
+            if (useDetail) {
+                if (detail == null) {
+                    detail = buildPath(feature, feature.detail);
+                }
+                return detail;
+            }
+            if (overview == null) {
+                overview = buildPath(feature, feature.overview);
+            }
+            return overview;
         }
     }
 
@@ -473,6 +483,11 @@ public class ChinaMapView extends View {
         invalidate();
     }
 
+    public void setCountyVisible(boolean v) {
+        countyVisible = v;
+        invalidate();
+    }
+
     public void setLabelsVisible(boolean v) {
         labelsVisible = v;
         invalidate();
@@ -493,6 +508,88 @@ public class ChinaMapView extends View {
         invalidate();
     }
 
+    /**
+     * 切换底图类型。type 为 TileSource.TYPE_*；栅格图层需要网络。
+     */
+    public void setMapType(int type, int provider, String tiandituKey) {
+        mapType = type;
+        rasterMode = type != TileSource.TYPE_VECTOR;
+        if (rasterMode) {
+            int baseType = type == TileSource.TYPE_HYBRID
+                    ? TileSource.TYPE_SATELLITE : type;
+            TileSource base = TileSource.forRaster(baseType, provider, tiandituKey);
+            rasterGcj = base.datum == TileSource.DATUM_GCJ02;
+            rasterMaxScale = Math.min(MAX_RASTER_PX,
+                    256.0 * (1 << Math.max(0, base.maxZoom)));
+            rasterLayer.setKey(tiandituKey);
+            if (type == TileSource.TYPE_HYBRID) {
+                if (base.provider == TileSource.PROVIDER_TIANDITU) {
+                    rasterLayer.setSources(base, TileSource.tiandituLabels());
+                } else if (base.provider == TileSource.PROVIDER_AMAP) {
+                    rasterLayer.setSources(base, TileSource.amapOverlay());
+                } else {
+                    rasterLayer.setSources(base, TileSource.esriTransportation(),
+                            TileSource.esriPlaces());
+                }
+            } else {
+                rasterLayer.setSources(base);
+            }
+            mapAttribution = base.attribution;
+        } else {
+            rasterLayer.setSources(null);
+            mapAttribution = TileSource.ATTR_VECTOR;
+        }
+        updateZoomLimits();
+        trackSynced = 0;
+        trackTypeSynced = -1;
+        trackPath.reset();
+        invalidate();
+    }
+
+    public int getMapType() {
+        return mapType;
+    }
+
+    public boolean isRasterMode() {
+        return rasterMode;
+    }
+
+    public long tileCacheBytes() {
+        return rasterLayer.cacheBytes();
+    }
+
+    public void clearTileCache() {
+        rasterLayer.clearCache();
+    }
+
+    private void updateZoomLimits() {
+        if (fitScale <= 1) {
+            return;
+        }
+        maxScale = rasterMode ? rasterMaxScale
+                : Math.min(fitScale * 1500, MAX_WORLD_PX);
+        if (scale > maxScale) {
+            scale = maxScale;
+            clampPan();
+        }
+    }
+
+    private double displayLat(int i) {
+        return rasterMode && !rasterGcj ? track.wgsLat(i) : track.mapLat(i);
+    }
+
+    private double displayLon(int i) {
+        return rasterMode && !rasterGcj ? track.wgsLon(i) : track.mapLon(i);
+    }
+
+    private double[] lastDisplayLatLon() {
+        int n = track.size();
+        if (n == 0) {
+            return null;
+        }
+        return new double[]{displayLat(n - 1), displayLon(n - 1)};
+    }
+
     // ------------------------------------------------------------ 视图变换
     public void fitChina() {
         if (getWidth() == 0 || getHeight() == 0) {
@@ -505,7 +602,7 @@ public class ChinaMapView extends View {
         double y1 = Mercator.latToY(FIT_LAT_MIN);
         fitScale = Math.min(getWidth() / (x1 - x0), getHeight() / (y1 - y0)) * 0.94;
         minScale = fitScale * 0.6;
-        maxScale = Math.min(fitScale * 650, MAX_WORLD_PX);
+        updateZoomLimits();
         scale = fitScale;
         offsetX = getWidth() / 2.0 - (x0 + x1) / 2.0 * scale;
         offsetY = getHeight() / 2.0 - (y0 + y1) / 2.0 * scale;
@@ -591,7 +688,7 @@ public class ChinaMapView extends View {
     }
 
     private void centerOnLatest() {
-        double[] ll = track.lastLatLon();
+        double[] ll = lastDisplayLatLon();
         if (ll == null) {
             return;
         }
@@ -630,8 +727,8 @@ public class ChinaMapView extends View {
         float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
         float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
         for (int i = 0; i < n; i++) {
-            float x = (float) Mercator.lonToX(track.mapLon(i));
-            float y = (float) Mercator.latToY(track.mapLat(i));
+            float x = (float) Mercator.lonToX(displayLon(i));
+            float y = (float) Mercator.latToY(displayLat(i));
             if (x < minX) minX = x;
             if (x > maxX) maxX = x;
             if (y < minY) minY = y;
@@ -666,6 +763,11 @@ public class ChinaMapView extends View {
     }
 
     private void syncTrack() {
+        if (trackTypeSynced != mapType) {
+            trackTypeSynced = mapType;
+            trackSynced = 0;
+            trackPath.reset();
+        }
         int n = track.size();
         long dropped = track.droppedCount();
         int epoch = track.datumEpoch();
@@ -716,9 +818,37 @@ public class ChinaMapView extends View {
                     getWidth() / 2f, getHeight() / 2f, pHint);
             return;
         }
+        float s = (float) scale;
+        if (rasterMode) {
+            trackSynced = track.size();
+            canvas.drawColor(0xFFE9EEF2);
+            rasterLayer.draw(canvas, scale, offsetX, offsetY, getWidth(), getHeight());
+            canvas.save();
+            canvas.translate((float) offsetX, (float) offsetY);
+            canvas.scale(s, s);
+            if (gridVisible) {
+                pGrid.setStrokeWidth(dp(0.7f) / s);
+                drawGraticule(canvas);
+            }
+            canvas.restore();
+            if (gridVisible) {
+                drawGridLabels(canvas);
+            }
+            drawRasterTrack(canvas);
+            drawLatest(canvas);
+            drawOffscreenHint(canvas);
+            drawHint(canvas);
+            drawScaleBar(canvas);
+            drawCompass(canvas);
+            drawAttribution(canvas);
+            long age = SystemClock.uptimeMillis() - lastFixUptime;
+            if (age < PULSE_MS && trackSynced > 0) {
+                postInvalidateOnAnimation();
+            }
+            return;
+        }
         syncTrack();
         boolean useDetail = scale >= fitScale * 3.0;
-        float s = (float) scale;
         float wx0 = (float) ((0 - offsetX) / scale);
         float wx1 = (float) ((getWidth() - offsetX) / scale);
         float wy0 = (float) ((0 - offsetY) / scale);
@@ -741,9 +871,11 @@ public class ChinaMapView extends View {
         }
 
         boolean cityLayer = cityVisible && scale > fitScale * 2.2;
+        boolean countyLayer = countyVisible && scale > fitScale * 4.0
+                && !counties.isEmpty();
         if (!cityLayer) {
-            // 低缩放只画省界；高缩放改由完整的地级市网络表达边界，
-            // 避免 DataV 省级/市级两套几何在放大后出现“双线”
+            // 低缩放只画省界；放大后改用更细的市/县网络，
+            // 避免 DataV 多套几何叠加出现“双线”
             pProvBorder.setStrokeWidth(dp(1.1f) / s);
             for (DrawnFeature d : provinces) {
                 if (!visible(d, wx0, wy0, wx1, wy1)) {
@@ -760,6 +892,15 @@ public class ChinaMapView extends View {
                     continue;
                 }
                 canvas.drawPath(d.pathFor(useDetail), pCityBorder);
+            }
+        }
+        if (countyLayer) {
+            pCountyBorder.setStrokeWidth(dp(0.55f) / s);
+            for (DrawnFeature d : counties) {
+                if (!visible(d, wx0, wy0, wx1, wy1)) {
+                    continue;
+                }
+                canvas.drawPath(d.pathFor(useDetail), pCountyBorder);
             }
         }
 
@@ -943,6 +1084,31 @@ public class ChinaMapView extends View {
             pLabelHalo.setFakeBoldText(true);
             pLabel.setColor(COLOR_LABEL);
         }
+        if (scale > fitScale * 8.0 && countyVisible && !counties.isEmpty()) {
+            pLabel.setTextSize(dp(8.5f));
+            pLabelHalo.setTextSize(dp(8.5f));
+            pLabel.setFakeBoldText(false);
+            pLabelHalo.setFakeBoldText(false);
+            pLabel.setColor(0xFF7A6850);
+            int drawn = 0;
+            for (DrawnFeature d : counties) {
+                if (!d.feature.hasCenter() || d.feature.name.isEmpty()) {
+                    continue;
+                }
+                float[] pt = lonLatToScreen(d.feature.centerLat, d.feature.centerLon);
+                if (!inMapArea(pt[0], pt[1], dp(8f))) {
+                    continue;
+                }
+                canvas.drawText(d.feature.name, pt[0], pt[1], pLabelHalo);
+                canvas.drawText(d.feature.name, pt[0], pt[1], pLabel);
+                if (++drawn > 200) {
+                    break;
+                }
+            }
+            pLabel.setFakeBoldText(true);
+            pLabelHalo.setFakeBoldText(true);
+            pLabel.setColor(COLOR_LABEL);
+        }
     }
 
     /** 是否落在可视地图区域（避开顶部/底部悬浮控件与南海小图）。 */
@@ -1039,13 +1205,13 @@ public class ChinaMapView extends View {
                     || d.feature.maxY < latTop || d.feature.minY > latBottom) {
                 continue;
             }
-            canvas.drawPath(d.overview, pLandFill);
+            canvas.drawPath(d.pathFor(false), pLandFill);
             pInsetBorder.setStrokeWidth(dp(0.6f) / (float) s);
-            canvas.drawPath(d.overview, pInsetBorder);
+            canvas.drawPath(d.pathFor(false), pInsetBorder);
         }
         if (nineDash != null) {
             pNineDash.setStrokeWidth(dp(1.2f) / (float) s);
-            canvas.drawPath(nineDash.detail, pNineDash);
+            canvas.drawPath(nineDash.pathFor(true), pNineDash);
         }
         canvas.restore();
 
@@ -1054,13 +1220,59 @@ public class ChinaMapView extends View {
     }
 
     // ------------------------------------------------------------ 定位红点
+    /** 栅格底图下用 WGS-84 + double 屏幕坐标画轨迹，避免深度缩放时的 float 抖动。 */
+    private void drawRasterTrack(Canvas canvas) {
+        int n = track.size();
+        if (n <= 0) {
+            return;
+        }
+        if (n > trackX.length) {
+            int cap = Math.min(TrackStore.MAX_POINTS, Math.max(n, trackX.length * 2));
+            float[] nx = new float[cap];
+            float[] ny = new float[cap];
+            System.arraycopy(trackX, 0, nx, 0, trackX.length);
+            System.arraycopy(trackY, 0, ny, 0, trackY.length);
+            trackX = nx;
+            trackY = ny;
+        }
+        Path p = new Path();
+        for (int i = 0; i < n; i++) {
+            double x = Mercator.lonToX(displayLon(i)) * scale + offsetX;
+            double y = Mercator.latToY(displayLat(i)) * scale + offsetY;
+            trackX[i] = (float) x;
+            trackY[i] = (float) y;
+            if (i == 0) {
+                p.moveTo((float) x, (float) y);
+            } else {
+                p.lineTo((float) x, (float) y);
+            }
+        }
+        if (n > 1) {
+            pTrackLine.setStrokeWidth(dp(2.4f));
+            canvas.drawPath(p, pTrackLine);
+            if (n <= 2000) {
+                pTrackDotStroke.setStrokeWidth(dp(1.2f));
+                float r = dp(3.0f);
+                for (int i = 0; i < n; i++) {
+                    canvas.drawCircle(trackX[i], trackY[i], r, pTrackDot);
+                    canvas.drawCircle(trackX[i], trackY[i], r, pTrackDotStroke);
+                }
+            }
+        } else {
+            float r = dp(3.5f);
+            pTrackDotStroke.setStrokeWidth(dp(1.4f));
+            canvas.drawCircle(trackX[0], trackY[0], r, pTrackDot);
+            canvas.drawCircle(trackX[0], trackY[0], r, pTrackDotStroke);
+        }
+    }
+
     private void drawLatest(Canvas canvas) {
         if (trackSynced == 0) {
             return;
         }
         int last = trackSynced - 1;
-        double lat = track.mapLat(trackSynced - 1);
-        double lon = track.mapLon(trackSynced - 1);
+        double lat = displayLat(last);
+        double lon = displayLon(last);
         float[] pt = lonLatToScreen(lat, lon);
         float cx = pt[0];
         float cy = pt[1];
@@ -1090,8 +1302,8 @@ public class ChinaMapView extends View {
 
         // 航向锥
         if (trackSynced >= 2) {
-            double lat0 = track.mapLat(trackSynced - 2);
-            double lon0 = track.mapLon(trackSynced - 2);
+            double lat0 = displayLat(trackSynced - 2);
+            double lon0 = displayLon(trackSynced - 2);
             double d = Mercator.distanceMeters(lat0, lon0, lat, lon);
             if (d > 3.0) {
                 double bearing = Math.toDegrees(Math.atan2(
@@ -1116,7 +1328,8 @@ public class ChinaMapView extends View {
         canvas.drawCircle(cx - dp(2f), cy - dp(2f), dp(2f), pMarkerHighlight);
 
         if (bubbleVisible) {
-            drawBubble(canvas, cx, cy, lat, lon, track.accuracy(last), track.datum(last), track.time(last));
+            drawBubble(canvas, cx, cy, lat, lon, track.accuracy(last),
+                    rasterMode && !rasterGcj ? "WGS-84" : "GCJ-02", track.time(last));
         }
     }
 
@@ -1132,9 +1345,9 @@ public class ChinaMapView extends View {
     }
 
     private void drawBubble(Canvas canvas, float cx, float cy, double lat, double lon,
-                            double accuracy, int datum, long time) {
+                            double accuracy, String datumName, long time) {
         String line1 = String.format(Locale.US, "%.6f, %.6f", lat, lon);
-        StringBuilder sb = new StringBuilder(CoordSystems.name(datum));
+        StringBuilder sb = new StringBuilder(datumName);
         if (accuracy > 0.5) {
             sb.append(String.format(Locale.US, " · ±%.0fm", accuracy));
         }
@@ -1188,8 +1401,9 @@ public class ChinaMapView extends View {
         if (trackSynced == 0) {
             return;
         }
-        double lat = track.mapLat(trackSynced - 1);
-        double lon = track.mapLon(trackSynced - 1);
+        int lastIdx = track.size() - 1;
+        double lat = displayLat(lastIdx);
+        double lon = displayLon(lastIdx);
         float[] pt = lonLatToScreen(lat, lon);
         float left = dp(16f), top = dp(108f);
         float right = getWidth() - dp(16f), bottom = getHeight() - dp(120f);
@@ -1233,8 +1447,15 @@ public class ChinaMapView extends View {
         double nice = niceNumber(target);
         float len = (float) (nice / metersPerPx);
         float x0 = dp(16f);
-        float y0 = getHeight() - dp(104f);
+        float y0 = getHeight() - dp(128f);
         float x1 = x0 + len;
+        String label = nice >= 1000
+                ? String.format(Locale.US, "%.0f km", nice / 1000)
+                : String.format(Locale.US, "%.0f m", nice);
+        float tw = pScaleBarText.measureText(label);
+        RectF bg = new RectF(x0 - dp(7f), y0 - dp(28f),
+                Math.max(x1, x0 + tw) + dp(7f), y0 + dp(9f));
+        canvas.drawRoundRect(bg, dp(5f), dp(5f), pScaleBg);
         Path bar = new Path();
         bar.moveTo(x0, y0);
         bar.lineTo(x1, y0);
@@ -1243,9 +1464,6 @@ public class ChinaMapView extends View {
         bar.moveTo(x1, y0 - dp(4f));
         bar.lineTo(x1, y0 + dp(4f));
         canvas.drawPath(bar, pScaleBar);
-        String label = nice >= 1000
-                ? String.format(Locale.US, "%.0f km", nice / 1000)
-                : String.format(Locale.US, "%.0f m", nice);
         canvas.drawText(label, x0, y0 - dp(6f), pScaleBarText);
     }
 
@@ -1283,8 +1501,12 @@ public class ChinaMapView extends View {
     }
 
     private void drawAttribution(Canvas canvas) {
-        canvas.drawText("GCJ-02 底图 · DataV.GeoAtlas", getWidth() - dp(8f),
-                getHeight() - dp(96f), pAttribution);
+        float y = getHeight() - dp(120f);
+        float tw = pAttribution.measureText(mapAttribution);
+        RectF bg = new RectF(getWidth() - tw - dp(12f), y - pAttribution.getTextSize(),
+                getWidth() - dp(4f), y + dp(4f));
+        canvas.drawRoundRect(bg, dp(3f), dp(3f), pAttrBg);
+        canvas.drawText(mapAttribution, getWidth() - dp(8f), y, pAttribution);
     }
 
     private float dp(float v) {
@@ -1294,18 +1516,96 @@ public class ChinaMapView extends View {
     // ------------------------------------------------------------ 触摸
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (event.getActionMasked() == MotionEvent.ACTION_DOWN && offscreenVisible
-                && offscreenRect.contains(event.getX(), event.getY())) {
-            centerOnLatest();
-            clampPan();
-            invalidate();
+        final int action = event.getActionMasked();
+
+        if (action == MotionEvent.ACTION_DOWN) {
+            if (offscreenVisible && offscreenRect.contains(event.getX(), event.getY())) {
+                centerOnLatest();
+                clampPan();
+                invalidate();
+                return true;
+            }
+            cancelZoomAnimation();
+            tapDownTime = SystemClock.uptimeMillis();
+            tapDownX = event.getX();
+            tapDownY = event.getY();
+            tapMoved = false;
+            if (getParent() != null) {
+                getParent().requestDisallowInterceptTouchEvent(true);
+            }
+        }
+
+        if (action == MotionEvent.ACTION_MOVE && event.getPointerCount() == 1) {
+            if (Math.hypot(event.getX() - tapDownX, event.getY() - tapDownY) > touchSlop) {
+                tapMoved = true;
+            }
+        }
+
+        if (action == MotionEvent.ACTION_UP && !pinching) {
+            long now = SystemClock.uptimeMillis();
+            if (!tapMoved && now - tapDownTime < 300) {
+                if (now - lastTapUpTime < 300
+                        && Math.hypot(event.getX() - lastTapX, event.getY() - lastTapY) < dp(48f)) {
+                    animateZoom(event.getX(), event.getY(), 2.0);
+                    lastTapUpTime = 0;
+                } else {
+                    lastTapUpTime = now;
+                    lastTapX = event.getX();
+                    lastTapY = event.getY();
+                }
+            }
+        }
+
+        if (action == MotionEvent.ACTION_POINTER_DOWN && event.getPointerCount() == 2) {
+            pinching = true;
+            tapMoved = true;
+            lastTapUpTime = 0;
+            pinchStartSpan = pointerSpan(event);
+            pinchStartScale = scale;
+            pinchStartOffsetX = offsetX;
+            pinchStartOffsetY = offsetY;
+            pinchFocusX = (event.getX(0) + event.getX(1)) / 2f;
+            pinchFocusY = (event.getY(0) + event.getY(1)) / 2f;
+            MotionEvent cancel = MotionEvent.obtain(event);
+            cancel.setAction(MotionEvent.ACTION_CANCEL);
+            gestureDetector.onTouchEvent(cancel);
+            cancel.recycle();
             return true;
         }
-        scaleDetector.onTouchEvent(event);
-        if (!scaleDetector.isInProgress()) {
+
+        if (pinching && event.getPointerCount() >= 2) {
+            if (action == MotionEvent.ACTION_MOVE && pinchStartSpan > 1f) {
+                float span = pointerSpan(event);
+                double target = clampScale(pinchStartScale * span / pinchStartSpan, true);
+                double k = target / pinchStartScale;
+                offsetX = pinchFocusX - (pinchFocusX - pinchStartOffsetX) * k;
+                offsetY = pinchFocusY - (pinchFocusY - pinchStartOffsetY) * k;
+                scale = target;
+                clampPan();
+                invalidate();
+            } else if (action == MotionEvent.ACTION_POINTER_UP) {
+                pinching = false;
+            }
+            return true;
+        }
+
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            pinching = false;
+        }
+
+        if (!pinching && event.getPointerCount() == 1) {
             gestureDetector.onTouchEvent(event);
         }
         return true;
+    }
+
+    private static float pointerSpan(MotionEvent e) {
+        if (e.getPointerCount() < 2) {
+            return 0f;
+        }
+        float dx = e.getX(0) - e.getX(1);
+        float dy = e.getY(0) - e.getY(1);
+        return (float) Math.hypot(dx, dy);
     }
 
     @Override

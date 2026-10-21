@@ -48,6 +48,8 @@ PREVIEW = os.path.join(ROOT, "docs", "preview", "china_map.png")
 
 DETAIL_EPS = 0.0002      # 度，约 20m：基本保留全部源顶点
 OVERVIEW_EPS = 0.010     # 度，约 1km：低缩放用
+COUNTY_DETAIL_EPS = 0.0002
+COUNTY_OVERVIEW_EPS = 0.005
 JD_DETAIL_EPS = 0.0005
 JD_OVERVIEW_EPS = 0.002
 
@@ -167,6 +169,37 @@ def load_cities():
     return cities
 
 
+def load_counties():
+    """区县边界（level=3），来自 county_<adcode>_full.json。"""
+    counties = []
+    for fn in sorted(os.listdir(GEO)):
+        if not (fn.startswith("county_") and fn.endswith("_full.json")):
+            continue
+        try:
+            data = json.load(open(os.path.join(GEO, fn), encoding="utf-8"))
+        except Exception:
+            continue
+        for f in data.get("features", []):
+            p = f.get("properties") or {}
+            name = (p.get("name") or "").strip()
+            center = p.get("center") or p.get("centroid")
+            geom = f.get("geometry") or {}
+            if not name or not center:
+                continue
+            rings = feature_rings(geom)
+            if not rings:
+                continue
+            counties.append({
+                "level": 3,
+                "name": name,
+                "center": (float(center[0]), float(center[1])),
+                "rings": [[(float(x), float(y)) for x, y in r] for r in rings],
+                "detail_eps": COUNTY_DETAIL_EPS,
+                "overview_eps": COUNTY_OVERVIEW_EPS,
+            })
+    return counties
+
+
 # ---------------------------------------------------------------- writer
 def ud(v):
     """度 -> 微度 int32。"""
@@ -233,7 +266,7 @@ def verify(verbose=True):
     off += 4
     bbox = struct.unpack_from(">4f", data, off)
     off += 16
-    levels = {0: 0, 1: 0, 2: 0}
+    levels = {0: 0, 1: 0, 2: 0, 3: 0}
     names = []
     detail_pts = overview_pts = 0
     for _ in range(count):
@@ -261,8 +294,8 @@ def verify(verbose=True):
     if off != len(data):
         raise SystemExit("资产长度不一致: %d != %d" % (off, len(data)))
     if verbose:
-        print("校验通过: features=%d 省=%d 市=%d 九段线=%d detail=%d overview=%d 大小=%.2fMB"
-              % (count, levels.get(0, 0), levels.get(1, 0), levels.get(2, 0),
+        print("校验通过: features=%d 省=%d 市=%d 县=%d 九段线=%d detail=%d overview=%d 大小=%.2fMB"
+              % (count, levels.get(0, 0), levels.get(1, 0), levels.get(3, 0), levels.get(2, 0),
                  detail_pts, overview_pts, len(data) / 1048576.0))
         print("bbox: %.3f, %.3f, %.3f, %.3f" % bbox)
         print("示例名称:", "、".join(names[:6]))
@@ -271,6 +304,8 @@ def verify(verbose=True):
             raise SystemExit("缺少要素: " + n)
     if levels.get(0, 0) < 34:
         raise SystemExit("省级要素不足")
+    if levels.get(3, 0) < 2500:
+        raise SystemExit("区县要素不足: %d" % levels.get(3, 0))
     return count, detail_pts, overview_pts
 
 
@@ -319,7 +354,8 @@ def main():
         raise SystemExit("缺少 GeoJSON，请先运行 tools/fetch_geojson.py")
     provs, jd_geom = load_provinces()
     cities = load_cities()
-    features = list(provs) + list(cities)
+    counties = load_counties()
+    features = list(provs) + list(cities) + list(counties)
     if jd_geom:
         features.append({
             "level": 2,
@@ -329,6 +365,7 @@ def main():
             "detail_eps": JD_DETAIL_EPS,
             "overview_eps": JD_OVERVIEW_EPS,
         })
+    print("区县要素: %d" % len(counties))
     lons = [x for ft in provs for r in ft["rings"] for x, _ in r]
     lats = [y for ft in provs for r in ft["rings"] for _, y in r]
     bbox = (min(lons), min(lats), max(lons), max(lats))

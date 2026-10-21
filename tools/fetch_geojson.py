@@ -16,6 +16,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 BASE = "https://geo.datav.aliyun.com/areas_v3/bound/{}.json"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -60,6 +61,67 @@ def sha256(path):
     return h.hexdigest()
 
 
+
+def collect_cities(provinces):
+    """从已下载的省级文件里收集地级市 adcode。"""
+    cities = {}
+    for adcode, _ in provinces:
+        path = os.path.join(OUT, "prov_%s_full.json" % adcode)
+        if not os.path.exists(path):
+            continue
+        try:
+            data = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            continue
+        for f in data.get("features", []):
+            q = f.get("properties") or {}
+            code = str(q.get("adcode", ""))
+            if q.get("level") == "city" and len(code) == 6 and code.isdigit():
+                cities[code] = q.get("name", "")
+    return sorted(cities.items())
+
+
+def fetch_counties(cities, force=False):
+    """下载每个地级市的下级（区县）边界，文件名 county_<adcode>_full.json。"""
+    os.makedirs(OUT, exist_ok=True)
+    todo = []
+    for adcode, name in cities:
+        dest = os.path.join(OUT, "county_%s_full.json" % adcode)
+        if force or not os.path.exists(dest):
+            todo.append((adcode, name))
+    if not todo:
+        print("区县数据已存在: %d 个市" % len(cities))
+        return 0, 0
+
+    print("下载区县边界: %d 个市 ..." % len(todo))
+    ok = [0]
+    skip = [0]
+    lock = __import__("threading").Lock()
+
+    def work(item):
+        adcode, name = item
+        dest = os.path.join(OUT, "county_%s_full.json" % adcode)
+        try:
+            fetch(BASE.format("%s_full" % adcode), dest)
+            with lock:
+                ok[0] += 1
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                with lock:
+                    skip[0] += 1
+                return
+            raise
+        except Exception as e:  # noqa: BLE001
+            print("  失败 %s %s: %s" % (adcode, name, e))
+            with lock:
+                skip[0] += 1
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        list(ex.map(work, todo))
+    print("区县下载完成: 成功 %d, 跳过/失败 %d" % (ok[0], skip[0]))
+    return ok[0], skip[0]
+
+
 def main():
     force = "--force" in sys.argv
     os.makedirs(OUT, exist_ok=True)
@@ -98,14 +160,21 @@ def main():
                     continue
                 raise
 
+    cities = collect_cities(provinces)
+    fetch_counties(cities, force)
+
     files = ["cn_100000_full.json"] + [
         "prov_%s_full.json" % a for a, _ in provinces
         if os.path.exists(os.path.join(OUT, "prov_%s_full.json" % a))
+    ] + [
+        "county_%s_full.json" % a for a, _ in cities
+        if os.path.exists(os.path.join(OUT, "county_%s_full.json" % a))
     ]
     manifest = {
         "source": "https://geo.datav.aliyun.com/areas_v3/bound/",
         "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "provinces": [{"adcode": a, "name": n} for a, n in provinces],
+        "cities": [{"adcode": a, "name": n} for a, n in cities],
         "files": {f: {"sha256": sha256(os.path.join(OUT, f)),
                       "bytes": os.path.getsize(os.path.join(OUT, f))} for f in files},
     }

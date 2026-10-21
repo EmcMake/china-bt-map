@@ -17,6 +17,7 @@ public final class MapData {
     public static final int LEVEL_PROVINCE = 0;
     public static final int LEVEL_CITY = 1;
     public static final int LEVEL_NINEDASH = 2;
+    public static final int LEVEL_COUNTY = 3;
 
     private static final byte[] MAGIC = {'C', 'N', 'M', 'A', 'P', '2'};
     private static final int NO_CENTER = Integer.MIN_VALUE;

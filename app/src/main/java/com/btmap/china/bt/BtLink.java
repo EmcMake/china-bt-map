@@ -508,7 +508,6 @@ public final class BtLink {
     private void closeGatt() {
         if (gatt != null) {
             try {
-                refreshGattCache(gatt);
                 gatt.close();
             } catch (Exception ignored) {
             }
@@ -540,11 +539,11 @@ public final class BtLink {
                 postStatus("已连接，发现服务…", true);
                 try {
                     g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
-                    refreshGattCache(g);
-                    g.requestMtu(247);
                 } catch (Exception ignored) {
                 }
-                main.postDelayed(() -> discover(g), 350);
+                // 先发现服务：不要在这里 refresh() / requestMtu()，
+                // 部分机型（OPPO/ColorOS、Android 11）会因此永远收不到 onServicesDiscovered。
+                main.postDelayed(() -> discover(g), 150);
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 boolean wasConnected = connected;
                 connected = false;
@@ -651,10 +650,23 @@ public final class BtLink {
         discovering = true;
         setStep(STEP_DISCOVER, STATE_PENDING, "发现服务中…");
         boolean ok = g.discoverServices();
+        postLog("discoverServices 调用 → " + ok);
         if (!ok) {
             discovering = false;
             fail(STEP_DISCOVER, "discoverServices 调用失败");
+            return;
         }
+        main.postDelayed(() -> {
+            if (gatt == g && discovering && connected) {
+                postLog("发现服务超时，重试一次");
+                boolean retry = g.discoverServices();
+                postLog("discoverServices 重试 → " + retry);
+                if (!retry) {
+                    discovering = false;
+                    fail(STEP_DISCOVER, "服务发现超时");
+                }
+            }
+        }, 5000);
     }
 
     private void subscribeAll(BluetoothGatt g) {
@@ -718,6 +730,12 @@ public final class BtLink {
     private void finishSubscribe() {
         for (GattCharInfo info : charInfos) {
             info.subscribed = info.notifiable();
+        }
+        if (gatt != null && connected) {
+            try {
+                gatt.requestMtu(247);
+            } catch (Exception ignored) {
+            }
         }
         if (subscribed > 0) {
             setStep(STEP_SUBSCRIBE, STATE_OK, "已订阅 " + subscribed + " 个特征");

@@ -15,8 +15,8 @@ BUILD="$ROOT/build/apk"
 DIST="$ROOT/dist"
 APP="$ROOT/app/src/main"
 
-VERSION_CODE=2
-VERSION_NAME="1.1"
+VERSION_CODE=4
+VERSION_NAME="1.2.0"
 APK_NAME="china-bt-map-${VERSION_NAME}.apk"
 
 KEYSTORE="$ROOT/keystore/release.jks"

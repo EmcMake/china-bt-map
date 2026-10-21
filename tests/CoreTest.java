@@ -1,4 +1,6 @@
 import com.btmap.china.map.MapData;
+import com.btmap.china.map.TileMath;
+import com.btmap.china.map.TileSource;
 import com.btmap.china.map.Mercator;
 import com.btmap.china.track.CoordParser;
 import com.btmap.china.track.CoordSystems;
@@ -29,6 +31,8 @@ public final class CoreTest {
         testRedatum();
         testZoomPrecision();
         testMapData(root);
+        testTileMath();
+        testWgsConversion();
 
         System.out.println();
         System.out.println("通过 " + passed + " 项，失败 " + failures.size() + " 项");
@@ -243,6 +247,42 @@ public final class CoreTest {
         check("清空后 dropped=0", store.droppedCount() == 0 && store.size() == 0);
     }
 
+    private static void testTileMath() {
+        check("z17 层级", TileMath.zoomForScale(256.0 * (1 << 17), 0, 19) == 17);
+        check("层级上限", TileMath.zoomForScale(1e12, 0, 19) == 19);
+        check("层级下限", TileMath.zoomForScale(1, 3, 19) == 3);
+        check("瓦片编号边界", TileMath.tileIndex(1.0, 3) == 7
+                && TileMath.tileIndex(-0.5, 3) == 0);
+        check("瓦片数量", TileMath.tileCount(5) == 32);
+
+        TileSource amap = TileSource.forRaster(TileSource.TYPE_STREET,
+                TileSource.PROVIDER_AMAP, "");
+        check("高德街道 GCJ-02", amap.datum == TileSource.DATUM_GCJ02);
+        check("高德街道高缩放", amap.maxZoom >= 17);
+        check("高德 URL", amap.url(10, 3, 4, "").contains("x=3")
+                && amap.url(10, 3, 4, "").contains("y=4"));
+
+        TileSource tdt = TileSource.forRaster(TileSource.TYPE_SATELLITE,
+                TileSource.PROVIDER_TIANDITU, "KEY123");
+        check("天地图 WGS-84", tdt.datum == TileSource.DATUM_WGS84);
+        check("天地图 tk", tdt.url(5, 1, 2, "KEY123").contains("tk=KEY123"));
+        TileSource fallback = TileSource.forRaster(TileSource.TYPE_STREET,
+                TileSource.PROVIDER_TIANDITU, "");
+        check("天地图无 tk 回退高德", fallback.provider == TileSource.PROVIDER_AMAP);
+    }
+
+    private static void testWgsConversion() {
+        double[] w = CoordSystems.toWgs84(CoordSystems.GCJ02, 39.9042, 116.4074);
+        double d = Mercator.distanceMeters(39.9042, 116.4074, w[0], w[1]);
+        check("GCJ->WGS 偏移 100-800m (" + Math.round(d) + "m)", d > 100 && d < 800);
+        double[] id = CoordSystems.toWgs84(CoordSystems.WGS84, 39.9042, 116.4074);
+        check("WGS->WGS 不变", Math.abs(id[0] - 39.9042) < 1e-9
+                && Math.abs(id[1] - 116.4074) < 1e-9);
+        double[] bd = CoordSystems.toWgs84(CoordSystems.BD09, 39.9042, 116.4074);
+        double db = Mercator.distanceMeters(39.9042, 116.4074, bd[0], bd[1]);
+        check("BD->WGS 有偏移 (" + Math.round(db) + "m)", db > 50);
+    }
+
     private static void testMapData(String root) throws Exception {
         MapData data = MapData.loadFile(root + "/app/src/main/assets/china_map.bin");
         check("要素数量 > 400 (" + data.features.length + ")", data.features.length > 400);
@@ -251,6 +291,17 @@ public final class CoreTest {
         check("地级市 > 300 (" + data.countLevel(MapData.LEVEL_CITY) + ")",
                 data.countLevel(MapData.LEVEL_CITY) > 300);
         check("九段线存在", data.countLevel(MapData.LEVEL_NINEDASH) == 1);
+        check("区县 > 2500 (" + data.countLevel(MapData.LEVEL_COUNTY) + ")",
+                data.countLevel(MapData.LEVEL_COUNTY) > 2500);
+        int countyPts = 0;
+        for (MapData.Feature f : data.features) {
+            if (f.level == MapData.LEVEL_COUNTY) {
+                for (int len : f.detail.len) {
+                    countyPts += len;
+                }
+            }
+        }
+        check("区县 detail > 80 万点 (" + countyPts + ")", countyPts > 800000);
         double bx = Mercator.lonToX(116.4074);
         double by = Mercator.latToY(39.9042);
         check("北京落在数据范围内", bx > data.minX && bx < data.maxX && by > data.minY && by < data.maxY);
