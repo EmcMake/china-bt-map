@@ -4,7 +4,8 @@
 在地图上实时打点、连成轨迹；支持 WGS-84 / GCJ-02 / BD-09 / CGCS2000 四种输入坐标系。
 
 - GitHub 仓库：<https://github.com/EmcMake/china-bt-map>
-- 手机直接下载 APK（v1.1）：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.1.apk>
+- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.1 附件为 `china-bt-map-1.1.apk`）
+- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.1.apk>（点 Download）
 - 安装包：`dist/china-bt-map-1.1.apk`（约 1.3 MB，已签名）
 - 包名：`com.btmap.china`，最低 Android 7.0（API 24），targetSdk 34
 - 纯 Java + Framework API，无 AndroidX / GMS / native 依赖；**没有 INTERNET 权限**
