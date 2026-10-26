@@ -229,7 +229,7 @@ public class ChinaMapView extends View {
 
         pLandFill.setStyle(Paint.Style.FILL);
         pLandFill.setColor(COLOR_LAND);
-        pLandFill.setAntiAlias(false);
+        pLandFill.setAntiAlias(true);
 
         pProvBorder.setStyle(Paint.Style.STROKE);
         pProvBorder.setColor(COLOR_PROV_BORDER);
@@ -247,7 +247,7 @@ public class ChinaMapView extends View {
         pWorldBorder.setStyle(Paint.Style.STROKE);
         pWorldBorder.setColor(0xFFB9A98C);
         pWorldBorder.setStrokeJoin(Paint.Join.ROUND);
-        pWorldBorder.setAntiAlias(false);
+        pWorldBorder.setAntiAlias(true);
 
         pWorldAdminBorder.setStyle(Paint.Style.STROKE);
         pWorldAdminBorder.setColor(0xFFD8CBB2);
@@ -276,6 +276,7 @@ public class ChinaMapView extends View {
         pLabel.setTextAlign(Paint.Align.CENTER);
         pLabel.setFakeBoldText(true);
         pLabel.setAntiAlias(true);
+        pLabel.setSubpixelText(true);
 
         pLabelHalo.setColor(0xFFFFFFFF);
         pLabelHalo.setTextSize(dp(11f));
@@ -284,6 +285,7 @@ public class ChinaMapView extends View {
         pLabelHalo.setStrokeWidth(dp(2.6f));
         pLabelHalo.setFakeBoldText(true);
         pLabelHalo.setAntiAlias(true);
+        pLabelHalo.setSubpixelText(true);
 
         pCityDot.setColor(0xFF8D6E63);
         pCityDot.setStyle(Paint.Style.FILL);
@@ -911,7 +913,7 @@ public class ChinaMapView extends View {
         double cover = Math.max(getWidth() / (x1 - x0),
                 getHeight() / (y1 - y0));
         scale = Math.min(cover, MAX_WORLD_PX);
-        minScale = worldFitScale * 0.85;
+        minScale = worldFitScale;
         maxScale = MAX_WORLD_PX;
         offsetX = getWidth() / 2.0 - (x0 + x1) / 2.0 * scale;
         offsetY = getHeight() / 2.0 - (y0 + y1) / 2.0 * scale;
@@ -932,7 +934,7 @@ public class ChinaMapView extends View {
         double y1 = Mercator.latToY(FIT_LAT_MIN);
         fitScale = Math.min(getWidth() / (x1 - x0), getHeight() / (y1 - y0)) * 0.94;
         double cover = Math.max(getWidth() / (x1 - x0), getHeight() / (y1 - y0));
-        minScale = fitScale * 0.6;
+        minScale = fitScale;
         updateZoomLimits();
         scale = cover;
         offsetX = getWidth() / 2.0 - (x0 + x1) / 2.0 * scale;
@@ -1213,8 +1215,8 @@ public class ChinaMapView extends View {
         canvas.translate((float) offsetX, (float) offsetY);
         canvas.scale(s, s);
 
-        boolean worldUseDetail = world != null && !interacting && scale >= worldFitScale * 60;
-        boolean batchCountries = scale < worldFitScale * 3;
+        boolean worldUseDetail = world != null && !interacting && scale >= worldFitScale * 1.2;
+        boolean batchCountries = scale < worldFitScale * 1.2;
         Path countryPath = worldUseDetail ? countryDetail : countryOverview;
         if (countryPath == null) {
             countryPath = countryOverview;
@@ -1519,8 +1521,8 @@ public class ChinaMapView extends View {
             canvas.drawText(label, pt[0], pt[1], pLabel);
         }
         if (scale > fitScale * 3.5 && !interacting) {
-            pLabel.setTextSize(dp(9.5f));
-            pLabelHalo.setTextSize(dp(9.5f));
+            pLabel.setTextSize(dp(11f));
+            pLabelHalo.setTextSize(dp(11f));
             pLabel.setFakeBoldText(false);
             pLabelHalo.setFakeBoldText(false);
             pLabel.setColor(0xFF6D5B45);
@@ -1544,8 +1546,8 @@ public class ChinaMapView extends View {
             pLabel.setColor(COLOR_LABEL);
         }
         if (scale > fitScale * 8.0 && countyVisible && !counties.isEmpty() && !interacting) {
-            pLabel.setTextSize(dp(8.5f));
-            pLabelHalo.setTextSize(dp(8.5f));
+            pLabel.setTextSize(dp(9.5f));
+            pLabelHalo.setTextSize(dp(9.5f));
             pLabel.setFakeBoldText(false);
             pLabelHalo.setFakeBoldText(false);
             pLabel.setColor(0xFF7A6850);
@@ -1577,14 +1579,14 @@ public class ChinaMapView extends View {
 
         // 国家名（世界视图低缩放，按等级/避让限量）
         if (viewMode == VIEW_WORLD) {
-            pLabel.setTextSize(dp(10.5f));
-            pLabelHalo.setTextSize(dp(10.5f));
+            pLabel.setTextSize(dp(12f));
+            pLabelHalo.setTextSize(dp(12f));
             pLabel.setFakeBoldText(true);
             pLabelHalo.setFakeBoldText(true);
             pLabel.setColor(COLOR_LABEL);
             boolean low = scale <= worldFitScale * 2.2;
             int maxRank = 4;
-            int cap = low ? 55 : 80;
+            int cap = low ? 75 : 90;
             List<RectF> boxes = new ArrayList<>();
             int drawn = 0;
             for (WorldDrawn d : countryLabelOrder) {
@@ -1648,11 +1650,11 @@ public class ChinaMapView extends View {
                 ? fitScale * 0.8 : worldFitScale * 10;
         if (scale >= adminLabelThreshold && !interacting
                 && !(viewMode == VIEW_CHINA && mapLanguage == LANG_ZH)) {
-            pLabel.setTextSize(dp(9.5f));
-            pLabelHalo.setTextSize(dp(9.5f));
+            pLabel.setTextSize(dp(11f));
+            pLabelHalo.setTextSize(dp(11f));
             pLabel.setFakeBoldText(false);
             pLabelHalo.setFakeBoldText(false);
-            pLabel.setColor(0xFF6D5B45);
+            pLabel.setColor(0xFF5D4A35);
             int drawn = 0;
             List<RectF> boxes = new ArrayList<>();
             for (WorldDrawn d : worldAdmin1) {
@@ -1701,11 +1703,11 @@ public class ChinaMapView extends View {
                 ? fitScale * 3.5 : worldFitScale * 40;
         if (scale >= placeThreshold && !interacting
                 && !(viewMode == VIEW_CHINA && mapLanguage == LANG_ZH)) {
-            pLabel.setTextSize(dp(8.5f));
-            pLabelHalo.setTextSize(dp(8.5f));
+            pLabel.setTextSize(dp(9.5f));
+            pLabelHalo.setTextSize(dp(9.5f));
             pLabel.setFakeBoldText(false);
             pLabelHalo.setFakeBoldText(false);
-            pLabel.setColor(0xFF5F5140);
+            pLabel.setColor(0xFF4E4436);
             float r = dp(2f);
             int drawn = 0;
             for (WorldDrawn d : worldPlaces) {

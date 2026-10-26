@@ -7,7 +7,7 @@ public final class TileMath {
 
     /** 当前 scale（世界宽度对应的像素数）对应的瓦片层级。 */
     public static int zoomForScale(double scale, int minZoom, int maxZoom) {
-        int z = (int) Math.round(Math.log(scale / 256.0) / Math.log(2));
+        int z = (int) Math.ceil(Math.log(scale / 256.0) / Math.log(2));
         return Math.max(minZoom, Math.min(maxZoom, z));
     }
 

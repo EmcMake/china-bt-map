@@ -16,7 +16,7 @@ mkdir -p "$HOME" "$ANDROID_AVD_HOME" "$ROOT/docs/screenshots" "$ROOT/build"
 
 PKG=com.btmap.china
 AVD=chinamap_test
-APK="$ROOT/dist/china-bt-map-1.3.1.apk"
+APK="$ROOT/dist/china-bt-map-1.3.2.apk"
 KEEP="${KEEP:-0}"
 [ -f "$APK" ] || { echo "缺少 $APK，请先 ./build.sh" >&2; exit 1; }
 
