@@ -64,6 +64,22 @@ public final class CoordSystems {
         }
     }
 
+    /** WGS-84 -> 指定显示/发送基准（BD-09 先 GCJ 再转 BD）。 */
+    public static double[] fromWgs84(int datum, double lat, double lon) {
+        switch (datum) {
+            case GCJ02:
+                return CoordTransform.wgs84ToGcj02(lat, lon);
+            case BD09: {
+                double[] gcj = CoordTransform.wgs84ToGcj02(lat, lon);
+                return CoordTransform.gcj02ToBd09(gcj[0], gcj[1]);
+            }
+            case WGS84:
+            case CGCS2000:
+            default:
+                return new double[]{lat, lon};
+        }
+    }
+
     /** 任意输入基准 -> WGS-84（在线影像/卫星图层使用）。 */
     public static double[] toWgs84(int datum, double lat, double lon) {
         switch (datum) {

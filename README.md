@@ -5,9 +5,9 @@
 标准底图完全离线；街道 / 卫星 / 卫星+路网 / 地形为在线瓦片（需要网络）。
 
 - GitHub 仓库：<https://github.com/EmcMake/china-bt-map>
-- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.3 附件为 `china-bt-map-1.2.3.apk`）
-- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.3.apk>（点 Download）
-- 安装包：`dist/china-bt-map-1.2.3.apk`（约 7 MB，已签名）
+- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.4 附件为 `china-bt-map-1.2.4.apk`）
+- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.4.apk>（点 Download）
+- 安装包：`dist/china-bt-map-1.2.4.apk`（约 7 MB，已签名）
 - 包名：`com.btmap.china`，最低 Android 7.0（API 24），targetSdk 34
 - 纯 Java + Framework API，无 AndroidX / GMS / native 依赖
 - 权限：蓝牙相关 + `INTERNET` / `ACCESS_NETWORK_STATE`（仅在线图层使用）
@@ -16,11 +16,11 @@
 
 ## 一、安装
 
-把 `dist/china-bt-map-1.2.3.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
+把 `dist/china-bt-map-1.2.4.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
 系统提示“未知来源”时允许一次即可。或用 adb：
 
 ```bash
-adb install -r dist/china-bt-map-1.2.3.apk
+adb install -r dist/china-bt-map-1.2.4.apk
 ```
 
 > 自签名证书仅用于个人侧载，不能上架应用商店。升级请用同一个 `keystore/release.jks`
@@ -117,6 +117,19 @@ App 的做法：
 - 发送时先 Write Request，1.2 秒无回包自动改用 Write Without Response 重发，并尝试 Read FFE1；
 - 设备必须是**红灯用户模式**；如果一直超时，先确认灯色、设备名（BQ-Q1）和是否被别的手机占用。
 
+
+### 定位并发送（BLE）
+
+- 入口：更多 → **定位并发送…**；
+- 定位来源：手机 GPS/网络（10 秒超时）→ 最后已知 → 可切“最后蓝牙点”；
+- 显示：WGS-84、GCJ-02、精度、provider、时间；
+- 发送内容默认 `lat,lon\r\n`（WGS-84，6 位小数），可选 `LAT=..,LON=..`、带精度、或“当前坐标系”（GCJ-02/BD-09）；
+- 预览可手动编辑；发送前自动补 `\r\n`，不会重复；
+- BLE 透传特征优先：**FFF2 写 / FFF1 通知**，其次 FFE1；诊断页会显示当前 TX/RX 特征；
+- 发送后在同一对话框显示 TX/RX hex、GB2312/文本、回包或超时。
+
+> 手机定位需要“位置”权限；室内可能只能拿到最后已知或最后蓝牙点。发送只在点“发送”时发生一次。
+
 ## 六、坐标数据格式（一行一个点）
 
 | 写法 | 示例 |
@@ -160,7 +173,7 @@ App 的做法：
 ```bash
 ./setup.sh --emulator   # JDK17 + Android SDK 34 + 模拟器镜像（一次性，约 2GB）
 ./build.sh              # aapt2 → javac → d8 → zipalign → apksigner
-./tests/run_tests.sh    # 纯 JVM 单测（104 项）
+./tests/run_tests.sh    # 纯 JVM 单测（112 项）
 ./verify_emulator.sh    # 无窗口模拟器安装 + 注入坐标 + 截图（KEEP=1 保留模拟器）
 python3 tools/fetch_geojson.py   # 抓取省/市/县 GeoJSON
 python3 tools/pack_map.py        # 重新生成内置地图数据（CNMAP2，含县级）
@@ -193,13 +206,13 @@ app/src/main/
     track/TrackStore.java           原始坐标/坐标系/精度/WGS/重算
     bt/BtLink.java                  BLE 状态机、扫描、重试、订阅、诊断
 tools/                              GeoJSON 抓取、CNMAP2 打包、图标
-tests/CoreTest.java                 104 项 JVM 单测
+tests/CoreTest.java                 112 项 JVM 单测
 docs/screenshots/                   模拟器/真机实测截图
 ```
 
 ## 十一、验证情况
 
-- **104 项 JVM 单测**通过：坐标系映射/BD-09 往返/WGS 换算、CNMAP2 精度、县界数量/点数、瓦片层级/URL、
+- **112 项 JVM 单测**通过：坐标系映射/BD-09 往返/WGS 换算、CNMAP2 精度、县界数量/点数、瓦片层级/URL、
   LOD、投影、比例尺、TrackStore 重算、解析器（半包、NMEA、精度、越界）等；
 - Android 14 ARM64 模拟器：县级边界/县名、街道（高德）、卫星、卫星+路网（高德）、切回标准、
   断网缓存，均无崩溃；截图见上；

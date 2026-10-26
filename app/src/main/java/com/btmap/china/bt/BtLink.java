@@ -164,6 +164,8 @@ public final class BtLink {
 
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic writeChar;
+    private BluetoothGattCharacteristic uartWriteChar;
+    private BluetoothGattCharacteristic uartNotifyChar;
     private final ArrayDeque<CccdWrite> cccdQueue = new ArrayDeque<>();
     private final List<GattCharInfo> charInfos = new ArrayList<>();
     private int subscribed;
@@ -623,6 +625,8 @@ public final class BtLink {
             }
             charInfos.clear();
             writeChar = null;
+            uartWriteChar = null;
+            uartNotifyChar = null;
             int totalChars = 0;
             for (BluetoothGattService s : g.getServices()) {
                 for (BluetoothGattCharacteristic c : s.getCharacteristics()) {
@@ -630,10 +634,31 @@ public final class BtLink {
                     GattCharInfo info = new GattCharInfo(s.getUuid().toString(),
                             c.getUuid().toString(), c.getProperties());
                     charInfos.add(info);
+                    String cu = c.getUuid().toString().toLowerCase(Locale.US);
+                    // WCH/常见 BLE 透传：FFF1 通知、FFF2 写；FFE1 读写通知一体
+                    if (cu.equals("0000fff2-0000-1000-8000-00805f9b34fb")) {
+                        uartWriteChar = c;
+                    } else if (cu.equals("0000fff1-0000-1000-8000-00805f9b34fb")) {
+                        uartNotifyChar = c;
+                    } else if (cu.equals("0000ffe1-0000-1000-8000-00805f9b34fb")) {
+                        if (info.writable()) {
+                            uartWriteChar = c;
+                        }
+                        if (info.notifiable()) {
+                            uartNotifyChar = c;
+                        }
+                    }
                     if (writeChar == null && info.writable()) {
                         writeChar = c;
                     }
                 }
+            }
+            if (uartWriteChar != null) {
+                writeChar = uartWriteChar;
+                postLog("UART 写特征 → " + uartWriteChar.getUuid());
+            }
+            if (uartNotifyChar != null) {
+                postLog("UART 通知特征 → " + uartNotifyChar.getUuid());
             }
             setStep(STEP_DISCOVER, STATE_OK, "服务 " + g.getServices().size()
                     + " 个 / 特征 " + totalChars + " 个");
@@ -952,6 +977,14 @@ public final class BtLink {
     }
 
     // ------------------------------------------------------------ 发送 / 断开
+    public String uartTxUuid() {
+        return writeChar == null ? "-" : writeChar.getUuid().toString();
+    }
+
+    public String uartRxUuid() {
+        return uartNotifyChar == null ? "-" : uartNotifyChar.getUuid().toString();
+    }
+
     /** 已连接、已发现服务、CCCD 已订阅成功，才允许发陀螺指令。 */
     public boolean isSpinnerReady() {
         return connected && gatt != null && writeChar != null && subscribed > 0;

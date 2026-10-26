@@ -1,5 +1,6 @@
 import com.btmap.china.map.MapData;
 import com.btmap.china.bt.SpinnerProtocol;
+import com.btmap.china.track.LocationPayload;
 import com.btmap.china.map.TileMath;
 import com.btmap.china.map.TileSource;
 import com.btmap.china.map.Mercator;
@@ -35,6 +36,7 @@ public final class CoreTest {
         testTileMath();
         testWgsConversion();
         testSpinnerProtocol();
+        testLocationPayload();
 
         System.out.println();
         System.out.println("通过 " + passed + " 项，失败 " + failures.size() + " 项");
@@ -247,6 +249,26 @@ public final class CoreTest {
         check("最后一点", last != null && Math.abs(last[0] - 39.9050) < 1e-9);
         store.clear();
         check("清空后 dropped=0", store.droppedCount() == 0 && store.size() == 0);
+    }
+
+    private static void testLocationPayload() {
+        String plain = LocationPayload.format(31.2304, 121.4737, 8, LocationPayload.STYLE_PLAIN);
+        check("定位默认格式", plain.equals("31.230400,121.473700"));
+        check("定位 CRLF", LocationPayload.ensureCrlf(plain).equals(plain + "\r\n"));
+        check("定位 CRLF 不重复", LocationPayload.ensureCrlf(plain + "\r\n")
+                .equals(plain + "\r\n"));
+        check("定位标签格式", LocationPayload.format(31.2304, 121.4737, 8,
+                LocationPayload.STYLE_LABELED).equals("LAT=31.230400,LON=121.473700"));
+        check("定位带精度", LocationPayload.format(31.2304, 121.4737, 8,
+                LocationPayload.STYLE_WITH_ACC).equals("31.230400,121.473700,8"));
+        check("定位字节", LocationPayload.bytes("ab").length == 4);
+
+        double[] gcj = CoordSystems.fromWgs84(CoordSystems.GCJ02, 39.9042, 116.4074);
+        double off = Mercator.distanceMeters(39.9042, 116.4074, gcj[0], gcj[1]);
+        check("WGS->GCJ 发送偏移 (" + Math.round(off) + "m)", off > 100 && off < 800);
+        double[] id = CoordSystems.fromWgs84(CoordSystems.CGCS2000, 39.9042, 116.4074);
+        check("CGCS 原样发送", Math.abs(id[0] - 39.9042) < 1e-9
+                && Math.abs(id[1] - 116.4074) < 1e-9);
     }
 
     private static void testSpinnerProtocol() {

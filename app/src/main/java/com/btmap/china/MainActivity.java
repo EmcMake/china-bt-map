@@ -41,6 +41,8 @@ import com.btmap.china.map.ChinaMapView;
 import com.btmap.china.map.TileSource;
 import com.btmap.china.track.CoordParser;
 import com.btmap.china.track.CoordSystems;
+import com.btmap.china.track.LocationHelper;
+import com.btmap.china.track.LocationPayload;
 import com.btmap.china.track.TrackStore;
 
 import java.nio.charset.StandardCharsets;
@@ -51,6 +53,7 @@ import java.util.Locale;
 public class MainActivity extends Activity implements BtLink.Callback {
     private static final int REQ_PERMS = 2001;
     private static final int REQ_ENABLE = 2002;
+    private static final int REQ_LOCATION = 2003;
 
     private ChinaMapView mapView;
     private TextView statusText;
@@ -276,6 +279,15 @@ public class MainActivity extends Activity implements BtLink.Callback {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_LOCATION) {
+            if (hasLocationPermission()) {
+                showLocationSendDialog();
+            } else {
+                toast("需要定位权限才能获取当前经纬度");
+                addLog("定位权限被拒绝：请在系统设置 → 应用 → 权限中允许“位置”");
+            }
+            return;
+        }
         if (requestCode != REQ_PERMS) {
             return;
         }
@@ -551,6 +563,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
         sb.append("模式: ").append(d.mode == BtLink.MODE_BLE ? "BLE" : "经典 SPP").append('\n');
         sb.append(String.format(Locale.US, "RSSI: %d dBm   MTU: %d  状态: %s\n",
                 d.rssi, d.mtu, d.connected ? "已连接" : "未连接"));
+        sb.append("TX 特征: ").append(bt.uartTxUuid()).append('\n');
+        sb.append("RX 特征: ").append(bt.uartRxUuid()).append('\n');
         sb.append("收包: ").append(d.bytesReceived).append(" 字节\n");
         sb.append("最近数据: ").append(d.lastData.isEmpty() ? "-" : d.lastData).append("\n\n");
         for (int i = 0; i < d.steps.length; i++) {
@@ -598,6 +612,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         items.add("坐标系：" + CoordSystems.chipLabel(datum));
         items.add("演示数据（画一条示例轨迹）");
         items.add("输入测试坐标");
+        items.add("定位并发送…");
         items.add(logVisible ? "隐藏日志面板" : "显示日志面板");
         items.add("蓝牙诊断");
         items.add("向模块发送指令…");
@@ -622,6 +637,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
                         injectDemo();
                     } else if (label.startsWith("输入测试坐标")) {
                         showInputDialog();
+                    } else if (label.startsWith("定位并发送")) {
+                        showLocationSendDialog();
                     } else if (label.contains("日志面板")) {
                         toggleLog();
                     } else if (label.startsWith("蓝牙诊断")) {
@@ -985,6 +1002,265 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 && data[data.length - 1] == 0x0A;
     }
 
+    private boolean hasLocationPermission() {
+        return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED
+                || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void showLocationSendDialog() {
+        if (!hasLocationPermission()) {
+            requestPermissions(new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOCATION);
+            return;
+        }
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
+        box.setPadding(pad, pad / 2, pad, pad / 2);
+
+        final TextView status = new TextView(this);
+        status.setTextSize(12);
+        status.setTextColor(0xFF546E7A);
+        status.setText(bt.isConnected()
+                ? "BLE：已连接（" + bt.uartTxUuid() + "）"
+                : "BLE：未连接，请先连接模块");
+        box.addView(status);
+
+        final TextView coords = new TextView(this);
+        coords.setTextSize(13);
+        coords.setTextColor(0xFF263238);
+        coords.setPadding(0, dp(8), 0, 0);
+        coords.setText("WGS-84：—\nGCJ-02：—");
+        box.addView(coords);
+
+        final TextView meta = new TextView(this);
+        meta.setTextSize(11);
+        meta.setTextColor(0xFF607D8B);
+        meta.setText("来源/精度/时间：—");
+        box.addView(meta);
+
+        RadioGroup sourceGroup = new RadioGroup(this);
+        sourceGroup.setOrientation(RadioGroup.HORIZONTAL);
+        final RadioButton phone = new RadioButton(this);
+        phone.setId(View.generateViewId());
+        phone.setText("手机定位");
+        phone.setChecked(true);
+        final RadioButton lastBt = new RadioButton(this);
+        lastBt.setId(View.generateViewId());
+        lastBt.setText("最后蓝牙点");
+        sourceGroup.addView(phone);
+        sourceGroup.addView(lastBt);
+        box.addView(sourceGroup);
+
+        TextView fmtLabel = new TextView(this);
+        fmtLabel.setText("发送格式");
+        fmtLabel.setTextSize(12);
+        fmtLabel.setPadding(0, dp(6), 0, 0);
+        box.addView(fmtLabel);
+
+        final Spinner fmt = new Spinner(this);
+        String[] fmts = {"lat,lon", "LAT=..,LON=..", "lat,lon,精度"};
+        ArrayAdapter<String> fa = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, fmts);
+        fa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        fmt.setAdapter(fa);
+        box.addView(fmt);
+
+        RadioGroup datumGroup = new RadioGroup(this);
+        datumGroup.setOrientation(RadioGroup.HORIZONTAL);
+        final RadioButton wgs = new RadioButton(this);
+        wgs.setId(View.generateViewId());
+        wgs.setText("WGS-84");
+        wgs.setChecked(true);
+        final RadioButton cur = new RadioButton(this);
+        cur.setId(View.generateViewId());
+        cur.setText("当前坐标系 " + CoordSystems.name(datum));
+        datumGroup.addView(wgs);
+        datumGroup.addView(cur);
+        box.addView(datumGroup);
+
+        final EditText preview = new EditText(this);
+        preview.setTextSize(12);
+        preview.setTypeface(Typeface.MONOSPACE);
+        preview.setMinLines(3);
+        preview.setHint("要发送的内容（可编辑）");
+        box.addView(preview);
+
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        Button locate = new Button(this);
+        locate.setText("重新定位");
+        locate.setTextSize(11);
+        locate.setMinWidth(0);
+        locate.setPadding(dp(8), 0, dp(8), 0);
+        buttons.addView(locate);
+
+        Button send = new Button(this);
+        send.setText("发送");
+        send.setTextSize(11);
+        send.setMinWidth(0);
+        send.setPadding(dp(8), 0, dp(8), 0);
+        buttons.addView(send);
+        box.addView(buttons);
+
+        final TextView result = new TextView(this);
+        result.setTextSize(11);
+        result.setTypeface(Typeface.MONOSPACE);
+        result.setTextColor(0xFF263238);
+        result.setText("等待定位/发送…");
+        ScrollView resultScroll = new ScrollView(this);
+        resultScroll.setPadding(0, dp(6), 0, 0);
+        resultScroll.addView(result);
+        resultScroll.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(150)));
+        box.addView(resultScroll);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("定位并发送（BLE）")
+                .setView(scroll)
+                .setNegativeButton("关闭", null)
+                .create();
+
+        final LocationHelper helper = new LocationHelper(this);
+        final LocationHelper.Fix[] current = {null};
+        final int[] source = {0};
+        final int[] sendDatum = {CoordSystems.WGS84};
+
+        final Runnable render = () -> {
+            LocationHelper.Fix f = current[0];
+            if (f == null) {
+                coords.setText("WGS-84：—\nGCJ-02：—");
+                meta.setText("来源/精度/时间：—");
+                preview.setText("");
+                return;
+            }
+            double[] gcj = CoordSystems.toMap(CoordSystems.WGS84, f.lat, f.lon);
+            coords.setText(String.format(Locale.US,
+                    "WGS-84 %.6f, %.6f\nGCJ-02 %.6f, %.6f", f.lat, f.lon, gcj[0], gcj[1]));
+            meta.setText(String.format(Locale.US, "%s · %s · ±%.0fm · %s",
+                    f.source, f.provider, f.accuracy,
+                    new java.text.SimpleDateFormat("MM-dd HH:mm:ss", Locale.US)
+                            .format(new java.util.Date(f.time))));
+
+            double lat = f.lat;
+            double lon = f.lon;
+            if (sendDatum[0] != CoordSystems.WGS84) {
+                double[] d = CoordSystems.fromWgs84(sendDatum[0], f.lat, f.lon);
+                lat = d[0];
+                lon = d[1];
+            }
+            int style = fmt.getSelectedItemPosition();
+            String text = LocationPayload.format(lat, lon, f.accuracy, style);
+            preview.setText(LocationPayload.ensureCrlf(text));
+        };
+
+        final Runnable locateRun = () -> {
+            status.setText("正在定位…");
+            helper.requestFix(10000, new LocationHelper.Callback() {
+                @Override
+                public void onFix(LocationHelper.Fix fix) {
+                    if (!dialog.isShowing()) {
+                        return;
+                    }
+                    current[0] = fix;
+                    source[0] = 0;
+                    status.setText("已定位（" + fix.source + "）");
+                    render.run();
+                }
+
+                @Override
+                public void onError(String message) {
+                    if (!dialog.isShowing()) {
+                        return;
+                    }
+                    status.setText(message);
+                    result.append("\n定位失败：" + message + "\n");
+                }
+            });
+        };
+
+        final Runnable lastRun = () -> {
+            int n = TrackStore.INSTANCE.size();
+            if (n == 0) {
+                status.setText("还没有蓝牙坐标点");
+                current[0] = null;
+                render.run();
+                return;
+            }
+            int i = n - 1;
+            current[0] = new LocationHelper.Fix(
+                    TrackStore.INSTANCE.wgsLat(i), TrackStore.INSTANCE.wgsLon(i),
+                    TrackStore.INSTANCE.accuracy(i), "最后蓝牙点",
+                    TrackStore.INSTANCE.time(i), "最后蓝牙点");
+            source[0] = 1;
+            status.setText("使用最后一个蓝牙坐标");
+            render.run();
+        };
+
+        sourceGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == lastBt.getId()) {
+                lastRun.run();
+            } else {
+                locateRun.run();
+            }
+        });
+        fmt.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view,
+                                       int position, long id) {
+                render.run();
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+            }
+        });
+        datumGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            sendDatum[0] = checkedId == cur.getId() ? datum : CoordSystems.WGS84;
+            render.run();
+        });
+
+        final BtLink.SpinnerCallback cb = (ok, message, tx, rx, writeType, writeStatus) ->
+                runOnUiThread(() -> {
+                    String now = new java.text.SimpleDateFormat("HH:mm:ss",
+                            Locale.US).format(new java.util.Date());
+                    result.append("[" + now + "] " + (ok ? "收到回包" : "已发送/超时") + "\n");
+                    result.append("TX " + SpinnerProtocol.hex(tx) + "  「"
+                            + SpinnerProtocol.decode(tx).trim() + "」\n");
+                    result.append("RX " + SpinnerProtocol.hex(rx) + "  「"
+                            + SpinnerProtocol.decode(rx).trim() + "」\n");
+                    result.append(message + "  (writeType=" + writeType
+                            + ", status=" + writeStatus + ")\n\n");
+                });
+
+        locate.setOnClickListener(v -> {
+            phone.setChecked(true);
+            locateRun.run();
+        });
+
+        send.setOnClickListener(v -> {
+            String text = preview.getText().toString();
+            if (text.trim().isEmpty()) {
+                toast("没有可发送的内容");
+                return;
+            }
+            byte[] payload = LocationPayload.bytes(text);
+            result.append("\n→ 发送 " + payload.length + " 字节，等待回包…\n");
+            bt.sendCommand(payload, cb);
+        });
+
+        dialog.setOnDismissListener(d -> helper.cancel());
+        dialog.show();
+        locateRun.run();
+    }
+
     private void showSpinnerDialog() {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -1118,7 +1394,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "中国地图蓝牙轨迹  v1.2.3\n\n"
+        String msg = "中国地图蓝牙轨迹  v1.2.4\n\n"
                 + "· 标准底图内置到县级（GCJ-02），完全离线\n"
                 + "· 街道/卫星/卫星+路网/地形为在线瓦片，需要网络\n"
                 + "· 输入坐标系可选：GCJ-02 / WGS-84 / BD-09 / CGCS2000\n"
