@@ -17,7 +17,9 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +41,16 @@ public final class RasterTileLayer {
     private final Set<String> pending = Collections.synchronizedSet(new HashSet<String>());
     private final Map<String, Long> failed = new ConcurrentHashMap<>();
     private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
+    /** 最近实际画过的瓦片，内存缓存淘汰时不至于瞬间消失。 */
+    private final LinkedHashMap<String, Bitmap> visibleTiles =
+            new LinkedHashMap<String, Bitmap>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Bitmap> eldest) {
+                    return size() > 128;
+                }
+            };
+    private final Map<String, Integer> activeZoom = new HashMap<>();
+    private volatile boolean invalidatePosted;
 
     private List<TileSource> sources = new ArrayList<>();
     private boolean lastEmpty = true;
@@ -62,7 +74,9 @@ public final class RasterTileLayer {
         }
         sources = list;
         lastEmpty = true;
-        target.postInvalidateOnAnimation();
+        activeZoom.clear();
+        visibleTiles.clear();
+        requestRedraw();
     }
 
     public TileSource base() {
@@ -79,7 +93,9 @@ public final class RasterTileLayer {
 
     public void clearCache() {
         cache.clear();
-        target.postInvalidateOnAnimation();
+        visibleTiles.clear();
+        activeZoom.clear();
+        requestRedraw();
     }
 
     public void draw(Canvas canvas, double scale, double offsetX, double offsetY,
@@ -96,7 +112,7 @@ public final class RasterTileLayer {
 
         for (int si = 0; si < sources.size(); si++) {
             TileSource src = sources.get(si);
-            int z = TileMath.zoomForScale(scale, src.minZoom, src.maxZoom);
+            int z = zoomForScale(src, scale);
             int n = TileMath.tileCount(z);
             double tw = 1.0 / n;
 
@@ -122,8 +138,14 @@ public final class RasterTileLayer {
                     if (drawnTiles++ > MAX_TILES_PER_FRAME) {
                         continue;
                     }
+                    String tileKey = src.cacheId() + "/" + z + "/" + x + "/" + y;
                     Bitmap b = cache.getMemory(src.cacheId(), z, x, y);
+                    if (b == null) {
+                        // 已显示过但被内存缓存淘汰：继续用同一块，避免静止时闪一下。
+                        b = visibleTiles.get(tileKey);
+                    }
                     if (b != null) {
+                        visibleTiles.put(tileKey, b);
                         drawTile(canvas, b, x, y, tw, scale, offsetX, offsetY);
                         any = true;
                     } else {
@@ -284,15 +306,11 @@ public final class RasterTileLayer {
                     } else {
                         cache.putMemory(src.cacheId(), z, x, y, bmp);
                     }
+                    requestRedraw();
                 } else {
+                    // 失败不重绘：画面没有变化，反复 invalidate 会放大闪烁感。
                     failed.put(key, System.currentTimeMillis());
                 }
-                main.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        target.postInvalidateOnAnimation();
-                    }
-                });
             }
         });
     }
@@ -308,6 +326,47 @@ public final class RasterTileLayer {
 
     private String keyFor(TileSource src) {
         return src.provider == TileSource.PROVIDER_TIANDITU ? tiandituKey : "";
+    }
+
+    /** 合并同一批瓦片回调，避免一屏几十块瓦片触发几十次整屏重绘。 */
+    private void requestRedraw() {
+        if (invalidatePosted) {
+            return;
+        }
+        invalidatePosted = true;
+        main.post(new Runnable() {
+            @Override
+            public void run() {
+                invalidatePosted = false;
+                target.postInvalidateOnAnimation();
+            }
+        });
+    }
+
+    /**
+     * 层级滞回：缩放停在阈值附近时不要在两个 z 之间来回切换。
+     */
+    private int zoomForScale(TileSource src, double scale) {
+        int desired = TileMath.zoomForScale(scale, src.minZoom, src.maxZoom);
+        String id = src.cacheId();
+        Integer cur = activeZoom.get(id);
+        if (cur == null) {
+            activeZoom.put(id, desired);
+            return desired;
+        }
+        if (desired == cur) {
+            return cur;
+        }
+        double desiredBoundary = 256.0 * Math.pow(2, desired);
+        double curBoundary = 256.0 * Math.pow(2, cur);
+        if (desired < cur && scale > desiredBoundary * 0.92) {
+            return cur;
+        }
+        if (desired > cur && scale < curBoundary * 1.08) {
+            return cur;
+        }
+        activeZoom.put(id, desired);
+        return desired;
     }
 
     private static final class Need {

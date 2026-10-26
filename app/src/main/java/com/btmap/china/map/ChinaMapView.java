@@ -2033,8 +2033,11 @@ public class ChinaMapView extends View {
         if (bubbleVisible) {
             drawPhoneBubble(canvas, cx, cy, ll[0], ll[1]);
         }
-        // 只为刷新“最后更新 N 秒前”，5 秒一次
-        postInvalidateDelayed(5000);
+        // 只有定位气泡显示“最后更新 N 秒前”时才需要周期刷新；
+        // 没有气泡时不要每 5 秒重绘整张地图。
+        if (bubbleVisible) {
+            postInvalidateDelayed(5000);
+        }
     }
 
     private void drawPhoneOffscreen(Canvas canvas, float cx, float cy) {
