@@ -1177,7 +1177,7 @@ public class ChinaMapView extends View {
         float s = (float) scale;
         if (rasterMode) {
             trackSynced = track.size();
-            canvas.drawColor(0xFFE9EEF2);
+            canvas.drawColor(COLOR_SEA);
             rasterLayer.draw(canvas, scale, offsetX, offsetY, getWidth(), getHeight());
             canvas.save();
             canvas.translate((float) offsetX, (float) offsetY);

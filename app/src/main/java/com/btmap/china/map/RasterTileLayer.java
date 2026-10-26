@@ -105,19 +105,24 @@ public final class RasterTileLayer {
             double wx1 = (viewW - offsetX) / scale;
             double wy1 = (viewH - offsetY) / scale;
 
-            int x0 = (int) Math.floor(wx0 * n) - 1;
-            int x1 = (int) Math.ceil(wx1 * n) + 1;
-            int y0 = (int) Math.floor(wy0 * n) - 1;
-            int y1 = (int) Math.ceil(wy1 * n) + 1;
+            int x0 = (int) Math.floor(wx0 * n);
+            int x1 = (int) Math.ceil(wx1 * n);
+            int y0 = (int) Math.floor(wy0 * n);
+            int y1 = (int) Math.ceil(wy1 * n);
 
-            for (int x = x0; x <= x1; x++) {
-                int cx = ((x % n) + n) % n;
-                for (int y = y0; y <= y1; y++) {
+            // 只绘制世界范围内真实存在的瓦片；视口超出世界时留背景，
+            // 不能把边缘瓦片环绕/clamp 后重复绘制，否则会形成重影。
+            int xStart = Math.max(0, x0);
+            int xEnd = Math.min(n - 1, x1);
+            int yStart = Math.max(0, y0);
+            int yEnd = Math.min(n - 1, y1);
+
+            for (int x = xStart; x <= xEnd; x++) {
+                for (int y = yStart; y <= yEnd; y++) {
                     if (drawnTiles++ > MAX_TILES_PER_FRAME) {
                         continue;
                     }
-                    int cy = Math.max(0, Math.min(n - 1, y));
-                    Bitmap b = cache.getMemory(src.cacheId(), z, cx, cy);
+                    Bitmap b = cache.getMemory(src.cacheId(), z, x, y);
                     if (b != null) {
                         drawTile(canvas, b, x, y, tw, scale, offsetX, offsetY);
                         any = true;
@@ -130,22 +135,23 @@ public final class RasterTileLayer {
                         float sy = (float) ((y + 0.5) * tw * scale + offsetY);
                         double dx = sx - centerX;
                         double dy = sy - centerY;
-                        needs.add(new Need(src, z, cx, cy, x, y,
+                        needs.add(new Need(src, z, x, y, x, y,
                                 dx * dx + dy * dy, 1));
                         if (z > src.minZoom) {
                             int rawPx = Math.floorDiv(x, 2);
                             int rawPy = Math.floorDiv(y, 2);
                             int pn = TileMath.tileCount(z - 1);
-                            int px = ((rawPx % pn) + pn) % pn;
-                            int py = Math.max(0, Math.min(pn - 1, rawPy));
-                            if (cache.getMemory(src.cacheId(), z - 1, px, py) == null) {
+                            if (rawPx >= 0 && rawPx < pn
+                                    && rawPy >= 0 && rawPy < pn
+                                    && cache.getMemory(src.cacheId(), z - 1,
+                                    rawPx, rawPy) == null) {
                                 float psx = (float) ((rawPx + 0.5)
                                         * (1.0 / pn) * scale + offsetX);
                                 float psy = (float) ((rawPy + 0.5)
                                         * (1.0 / pn) * scale + offsetY);
                                 double pdx = psx - centerX;
                                 double pdy = psy - centerY;
-                                needs.add(new Need(src, z - 1, px, py,
+                                needs.add(new Need(src, z - 1, rawPx, rawPy,
                                         rawPx, rawPy, pdx * pdx + pdy * pdy, 0));
                             }
                         }
@@ -186,7 +192,7 @@ public final class RasterTileLayer {
 
     /**
      * 当前级未命中时，向上找任意可用的粗瓦片，裁剪后放大占位。
-     * 同时处理横向环绕、纵向边缘。
+     * 只使用世界范围内真实存在的父瓦片，不重复边缘。
      */
     private boolean drawAncestor(Canvas canvas, TileSource src, int z, int x, int y,
                                  double scale, double offsetX, double offsetY) {
@@ -199,9 +205,10 @@ public final class RasterTileLayer {
             int rawPx = Math.floorDiv(x, sub);
             int rawPy = Math.floorDiv(y, sub);
             int pn = TileMath.tileCount(pz);
-            int px = ((rawPx % pn) + pn) % pn;
-            int py = Math.max(0, Math.min(pn - 1, rawPy));
-            Bitmap b = cache.getMemory(src.cacheId(), pz, px, py);
+            if (rawPx < 0 || rawPx >= pn || rawPy < 0 || rawPy >= pn) {
+                continue;
+            }
+            Bitmap b = cache.getMemory(src.cacheId(), pz, rawPx, rawPy);
             if (b == null) {
                 continue;
             }
