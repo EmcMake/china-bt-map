@@ -26,7 +26,7 @@ import java.util.concurrent.Executors;
 
 /** 在线栅格瓦片层：底图 + 透明叠加层（路网/地名）。 */
 public final class RasterTileLayer {
-    private static final int MAX_TILES_PER_FRAME = 80;
+    private static final int MAX_TILES_PER_FRAME = 320;
     private static final long FAIL_BACKOFF_MS = 30_000;
 
     private final TileCache cache;
