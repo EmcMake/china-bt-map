@@ -195,6 +195,9 @@ public final class BtLink {
         int attempt;
         int lastStatus = -1;
         int lastWriteType;
+        int offset;
+        int chunkLen;
+        boolean awaitingWrite;
         boolean finished;
         Runnable probe;
         Runnable retry;
@@ -723,6 +726,23 @@ public final class BtLink {
         @Override
         public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic ch, int status) {
             postLog("写入完成 status=" + status + " " + ch.getUuid());
+            main.post(() -> {
+                PendingSpinner p = pendingSpinner;
+                if (p == null || p.finished || !p.awaitingWrite) {
+                    return;
+                }
+                p.awaitingWrite = false;
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    p.offset += p.chunkLen;
+                    writeNextChunk(p);
+                } else if (p.attempt == 0) {
+                    p.attempt = 1;
+                    writeSpinner(p, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                } else {
+                    finishSpinner(p, false, "写入失败 status=" + status,
+                            p.lastWriteType, status);
+                }
+            });
         }
     };
 
@@ -1037,37 +1057,68 @@ public final class BtLink {
         }
         cancelSpinnerTimers(p);
         p.lastWriteType = writeType;
+        p.offset = 0;
+        p.awaitingWrite = false;
+        writeNextChunk(p);
+    }
+
+    private void writeNextChunk(PendingSpinner p) {
+        if (pendingSpinner != p || p.finished) {
+            return;
+        }
+        if (p.offset >= p.tx.length) {
+            scheduleSpinnerResponseTimers(p);
+            return;
+        }
+        int max = mtu > 23 ? mtu - 3 : 20;
+        max = Math.max(20, Math.min(512, max));
+        int len = Math.min(max, p.tx.length - p.offset);
+        byte[] chunk = Arrays.copyOfRange(p.tx, p.offset, p.offset + len);
+        int writeType = p.lastWriteType;
         try {
             boolean ok;
             if (Build.VERSION.SDK_INT >= 33) {
-                int rc = gatt.writeCharacteristic(writeChar, p.tx, writeType);
+                int rc = gatt.writeCharacteristic(writeChar, chunk, writeType);
                 ok = rc == android.bluetooth.BluetoothStatusCodes.SUCCESS;
                 p.lastStatus = rc;
             } else {
                 writeChar.setWriteType(writeType);
-                writeChar.setValue(p.tx);
+                writeChar.setValue(chunk);
                 ok = gatt.writeCharacteristic(writeChar);
                 p.lastStatus = ok ? BluetoothGatt.GATT_SUCCESS : -1;
             }
-            postLog("陀螺写入 writeType=" + writeType + " ok=" + ok
+            postLog("写入分片 " + (p.offset + len) + "/" + p.tx.length
+                    + " writeType=" + writeType + " ok=" + ok
                     + " status=" + p.lastStatus);
-            if (!ok && writeType == BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                    && p.attempt == 0) {
-                p.retry = () -> {
-                    if (pendingSpinner == p && !p.finished && p.rx.size() == 0) {
-                        p.attempt = 1;
-                        writeSpinner(p, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-                    }
-                };
-                main.postDelayed(p.retry, 250);
+            if (!ok) {
+                if (writeType == BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                        && p.attempt == 0) {
+                    p.attempt = 1;
+                    writeSpinner(p, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                } else {
+                    finishSpinner(p, false, "写入失败 status=" + p.lastStatus,
+                            p.lastWriteType, p.lastStatus);
+                }
                 return;
             }
+            p.chunkLen = len;
+            if (writeType == BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) {
+                p.awaitingWrite = true;
+            } else {
+                p.offset += len;
+                main.postDelayed(() -> {
+                    if (pendingSpinner == p && !p.finished) {
+                        writeNextChunk(p);
+                    }
+                }, 25);
+            }
         } catch (SecurityException e) {
-            finishSpinner(p, false, "发送失败（权限）: " + e.getMessage(), p.lastWriteType,
-                    p.lastStatus);
-            return;
+            finishSpinner(p, false, "发送失败（权限）: " + e.getMessage(),
+                    p.lastWriteType, p.lastStatus);
         }
+    }
 
+    private void scheduleSpinnerResponseTimers(PendingSpinner p) {
         p.probe = () -> {
             if (pendingSpinner == p && !p.finished && p.rx.size() == 0) {
                 readSpinner(p);

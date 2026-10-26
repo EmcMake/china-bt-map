@@ -105,6 +105,7 @@ public class ChinaMapView extends View {
     private final Paint pInsetBg = new Paint();
     private final Paint pInsetBorder = new Paint();
     private final Paint pInsetLabel = new Paint();
+    private final Paint pPhoneRing = new Paint();
 
     private final Path trackPath = new Path();
     private float[] trackX = new float[1024];
@@ -138,6 +139,15 @@ public class ChinaMapView extends View {
     private boolean gridVisible = true;
     private boolean accuracyVisible = true;
     private boolean bubbleVisible = true;
+    private boolean phoneMarkerVisible = true;
+
+    private boolean phoneVisible;
+    private double phoneWgsLat;
+    private double phoneWgsLon;
+    private double phoneAccuracy;
+    private String phoneProvider = "";
+    private String phoneSource = "";
+    private long phoneTime;
 
     private boolean pinching;
     private long tapDownTime;
@@ -263,6 +273,11 @@ public class ChinaMapView extends View {
         pMarkerWhite.setColor(0xFFFFFFFF);
         pMarkerWhite.setStyle(Paint.Style.FILL);
         pMarkerWhite.setAntiAlias(true);
+
+        pPhoneRing.setStyle(Paint.Style.STROKE);
+        pPhoneRing.setColor(0x99E53935);
+        pPhoneRing.setStrokeWidth(dp(1.5f));
+        pPhoneRing.setAntiAlias(true);
 
         pMarkerCore.setColor(COLOR_TRACK);
         pMarkerCore.setStyle(Paint.Style.FILL);
@@ -590,6 +605,52 @@ public class ChinaMapView extends View {
         return new double[]{displayLat(n - 1), displayLon(n - 1)};
     }
 
+    /**
+     * 标注手机当前定位（WGS-84）。center=true 时把地图移到该点。
+     * 不写入 TrackStore，避免污染蓝牙轨迹。
+     */
+    public void setPhoneLocation(double wgsLat, double wgsLon, double accuracy,
+                                 String provider, String source, long time,
+                                 boolean center) {
+        phoneWgsLat = wgsLat;
+        phoneWgsLon = wgsLon;
+        phoneAccuracy = accuracy;
+        phoneProvider = provider == null ? "" : provider;
+        phoneSource = source == null ? "" : source;
+        phoneTime = time;
+        phoneVisible = true;
+        if (center) {
+            double[] ll = phoneMapLatLon();
+            focusOn(ll[0], ll[1], true);
+        }
+        invalidate();
+    }
+
+    public void clearPhoneLocation() {
+        phoneVisible = false;
+        invalidate();
+    }
+
+    public boolean hasPhoneLocation() {
+        return phoneVisible;
+    }
+
+    public void setPhoneMarkerVisible(boolean v) {
+        phoneMarkerVisible = v;
+        invalidate();
+    }
+
+    private double[] phoneMapLatLon() {
+        if (rasterMode && !rasterGcj) {
+            return new double[]{phoneWgsLat, phoneWgsLon};
+        }
+        return CoordSystems.toMap(CoordSystems.WGS84, phoneWgsLat, phoneWgsLon);
+    }
+
+    private String phoneDatumName() {
+        return rasterMode && !rasterGcj ? "WGS-84" : "GCJ-02";
+    }
+
     // ------------------------------------------------------------ 视图变换
     public void fitChina() {
         if (getWidth() == 0 || getHeight() == 0) {
@@ -836,6 +897,7 @@ public class ChinaMapView extends View {
             }
             drawRasterTrack(canvas);
             drawLatest(canvas);
+            drawPhoneMarker(canvas);
             drawOffscreenHint(canvas);
             drawHint(canvas);
             drawScaleBar(canvas);
@@ -937,6 +999,7 @@ public class ChinaMapView extends View {
         }
         drawInset(canvas);
         drawLatest(canvas);
+        drawPhoneMarker(canvas);
         drawOffscreenHint(canvas);
         drawHint(canvas);
         drawScaleBar(canvas);
@@ -1331,6 +1394,95 @@ public class ChinaMapView extends View {
             drawBubble(canvas, cx, cy, lat, lon, track.accuracy(last),
                     rasterMode && !rasterGcj ? "WGS-84" : "GCJ-02", track.time(last));
         }
+    }
+
+    /** 手机当前定位：红点 + 精度圈 + “当前定位”气泡，不与蓝牙轨迹混在一起。 */
+    private void drawPhoneMarker(Canvas canvas) {
+        if (!phoneVisible || !phoneMarkerVisible) {
+            return;
+        }
+        double[] ll = phoneMapLatLon();
+        float[] pt = lonLatToScreen(ll[0], ll[1]);
+        float cx = pt[0];
+        float cy = pt[1];
+        if (cx < -dp(20f) || cx > getWidth() + dp(20f)
+                || cy < -dp(20f) || cy > getHeight() + dp(20f)) {
+            return;
+        }
+
+        if (accuracyVisible && phoneAccuracy > 0.5) {
+            double world = phoneAccuracy / Mercator.metersPerWorldUnit(phoneWgsLat);
+            float rp = (float) (world * scale);
+            rp = Math.max(dp(10f), Math.min(dp(220f), rp));
+            canvas.drawCircle(cx, cy, rp, pAccuracyFill);
+            pAccuracyStroke.setStrokeWidth(dp(1f));
+            canvas.drawCircle(cx, cy, rp, pAccuracyStroke);
+        }
+
+        pPhoneRing.setStrokeWidth(dp(1.5f));
+        canvas.drawCircle(cx, cy, dp(13f), pPhoneRing);
+        canvas.drawCircle(cx, cy + dp(2f), dp(10f), pMarkerShadow);
+        canvas.drawCircle(cx, cy, dp(9f), pMarkerWhite);
+        canvas.drawCircle(cx, cy, dp(6f), pMarkerCore);
+        canvas.drawCircle(cx - dp(2f), cy - dp(2f), dp(2f), pMarkerHighlight);
+
+        if (bubbleVisible) {
+            drawPhoneBubble(canvas, cx, cy, ll[0], ll[1]);
+        }
+    }
+
+    private void drawPhoneBubble(Canvas canvas, float cx, float cy, double lat, double lon) {
+        String source = phoneSource.isEmpty() ? phoneProvider : phoneSource;
+        StringBuilder first = new StringBuilder("当前定位");
+        if (!source.isEmpty()) {
+            first.append(" · ").append(source);
+        }
+        if (phoneAccuracy > 0.5) {
+            first.append(String.format(Locale.US, " · ±%.0fm", phoneAccuracy));
+        }
+        long t = phoneTime > 0 ? phoneTime : System.currentTimeMillis();
+        String line2 = String.format(Locale.US, "%s %.6f, %.6f · %tH:%tM:%tS",
+                phoneDatumName(), lat, lon, t, t, t);
+        String line1 = first.toString();
+
+        float pad = dp(8f);
+        float w = Math.max(pBubble1.measureText(line1), pBubble2.measureText(line2)) + pad * 2;
+        float h = dp(34f);
+        float bx = cx - w / 2f;
+        float by = cy + dp(18f);
+        boolean above = false;
+        float maxY = getHeight() - dp(116f) - h;
+        if (by > maxY) {
+            by = cy - dp(18f) - h;
+            above = true;
+        }
+        if (by < dp(100f)) {
+            by = dp(100f);
+            above = false;
+        }
+        bx = Math.max(dp(6f), Math.min(getWidth() - w - dp(6f), bx));
+
+        RectF rect = new RectF(bx, by, bx + w, by + h);
+        RectF shadow = new RectF(bx, by + dp(2f), bx + w, by + h + dp(2f));
+        canvas.drawRoundRect(shadow, dp(8f), dp(8f), pBubbleShadow);
+        canvas.drawRoundRect(rect, dp(8f), dp(8f), pBubbleBg);
+        canvas.drawRoundRect(rect, dp(8f), dp(8f), pBubbleBorder);
+
+        float px = Math.max(bx + dp(10f), Math.min(bx + w - dp(10f), cx));
+        Path tri = new Path();
+        if (above) {
+            tri.moveTo(px - dp(5f), by + h);
+            tri.lineTo(px + dp(5f), by + h);
+            tri.lineTo(px, by + h + dp(6f));
+        } else {
+            tri.moveTo(px - dp(5f), by);
+            tri.lineTo(px + dp(5f), by);
+            tri.lineTo(px, by - dp(6f));
+        }
+        canvas.drawPath(tri, pBubbleBg);
+
+        canvas.drawText(line1, bx + w / 2f, by + dp(14f), pBubble1);
+        canvas.drawText(line2, bx + w / 2f, by + dp(28f), pBubble2);
     }
 
     private void drawPulse(Canvas canvas, float cx, float cy, float t) {

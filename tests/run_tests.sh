@@ -11,7 +11,7 @@ rm -rf "$OUT"
 mkdir -p "$OUT/classes"
 
 SRC=$(cd "$ROOT" && find app/src/main/java -name '*.java' | grep -E \
-  '/(map/Mercator|map/MapData|map/TileMath|map/TileSource|track/CoordParser|track/CoordTransform|track/CoordSystems|track/TrackStore|track/LocationPayload|bt/SpinnerProtocol)\.java$')
+  '/(map/Mercator|map/MapData|map/TileMath|map/TileSource|track/CoordParser|track/CoordTransform|track/CoordSystems|track/TrackStore|track/LocationPayload|track/LocationProtocol|bt/SpinnerProtocol)\.java$')
 
 # shellcheck disable=SC2086
 javac --release 11 -encoding UTF-8 -d "$OUT/classes" $SRC tests/CoreTest.java

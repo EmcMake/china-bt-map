@@ -1,6 +1,7 @@
 import com.btmap.china.map.MapData;
 import com.btmap.china.bt.SpinnerProtocol;
 import com.btmap.china.track.LocationPayload;
+import com.btmap.china.track.LocationProtocol;
 import com.btmap.china.map.TileMath;
 import com.btmap.china.map.TileSource;
 import com.btmap.china.map.Mercator;
@@ -37,6 +38,7 @@ public final class CoreTest {
         testWgsConversion();
         testSpinnerProtocol();
         testLocationPayload();
+        testLocationProtocol();
 
         System.out.println();
         System.out.println("通过 " + passed + " 项，失败 " + failures.size() + " 项");
@@ -249,6 +251,70 @@ public final class CoreTest {
         check("最后一点", last != null && Math.abs(last[0] - 39.9050) < 1e-9);
         store.clear();
         check("清空后 dropped=0", store.droppedCount() == 0 && store.size() == 0);
+    }
+
+    private static void testLocationProtocol() {
+        LocationProtocol.Values v = new LocationProtocol.Values(
+                31.2304, 121.4737, 8, 50, "网络定位", "network", "WGS-84", 0);
+        LocationProtocol def = new LocationProtocol(
+                LocationProtocol.DEFAULT_TEMPLATE,
+                LocationProtocol.ENC_UTF8, 6,
+                LocationProtocol.CK_NONE, true);
+        check("协议默认文本", def.text(v).equals("31.230400,121.473700\r\n"));
+        check("协议默认 hex", def.hex(v)
+                .equals("33312E3233303430302C3132312E3437333730300D0A"));
+
+        LocationProtocol noCrlf = new LocationProtocol("{lat},{lon}",
+                LocationProtocol.ENC_UTF8, 4, LocationProtocol.CK_NONE, false);
+        check("协议 4 位精度", noCrlf.text(v).equals("31.2304,121.4737"));
+
+        LocationProtocol labeled = new LocationProtocol("LAT={lat},LON={lon}",
+                LocationProtocol.ENC_UTF8, 6, LocationProtocol.CK_NONE, true);
+        check("协议标签", labeled.text(v).equals("LAT=31.230400,LON=121.473700\r\n"));
+
+        LocationProtocol xor = new LocationProtocol("AB{xor8}",
+                LocationProtocol.ENC_UTF8, 6, LocationProtocol.CK_NONE, false);
+        check("协议 XOR8", xor.hex(v).equals("414203"));
+
+        LocationProtocol sum = new LocationProtocol("AB{sum8}",
+                LocationProtocol.ENC_UTF8, 6, LocationProtocol.CK_NONE, false);
+        check("协议 SUM8", sum.hex(v).equals("414283"));
+
+        LocationProtocol crc = new LocationProtocol("123456789{crc16}",
+                LocationProtocol.ENC_UTF8, 6, LocationProtocol.CK_NONE, false);
+        check("协议 CRC16-Modbus", crc.hex(v).equals("313233343536373839374B"));
+
+        LocationProtocol esc = new LocationProtocol("\\xAA\\x55",
+                LocationProtocol.ENC_UTF8, 6, LocationProtocol.CK_NONE, false);
+        check("协议 \\xNN", esc.hex(v).equals("AA55"));
+
+        LocationProtocol gb = new LocationProtocol("{provider}",
+                LocationProtocol.ENC_GB2312, 6, LocationProtocol.CK_NONE, false);
+        check("协议 GB2312", gb.text(v).equals("network"));
+
+        boolean unknown = false;
+        try {
+            new LocationProtocol("{foo}", LocationProtocol.ENC_UTF8, 6,
+                    LocationProtocol.CK_NONE, false).render(v);
+        } catch (IllegalArgumentException e) {
+            unknown = true;
+        }
+        check("协议未知占位符", unknown);
+
+        boolean tooLong = false;
+        try {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 600; i++) {
+                sb.append('A');
+            }
+            new LocationProtocol(sb.toString(), LocationProtocol.ENC_UTF8, 6,
+                    LocationProtocol.CK_NONE, false).render(v);
+        } catch (IllegalArgumentException e) {
+            tooLong = true;
+        }
+        check("协议超长拒绝", tooLong);
+        check("协议二进制判定", new LocationProtocol("A{xor8}",
+                LocationProtocol.ENC_UTF8, 6, LocationProtocol.CK_NONE, false).isBinary());
     }
 
     private static void testLocationPayload() {

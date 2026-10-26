@@ -43,6 +43,7 @@ import com.btmap.china.track.CoordParser;
 import com.btmap.china.track.CoordSystems;
 import com.btmap.china.track.LocationHelper;
 import com.btmap.china.track.LocationPayload;
+import com.btmap.china.track.LocationProtocol;
 import com.btmap.china.track.TrackStore;
 
 import java.nio.charset.StandardCharsets;
@@ -54,6 +55,16 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private static final int REQ_PERMS = 2001;
     private static final int REQ_ENABLE = 2002;
     private static final int REQ_LOCATION = 2003;
+
+    private static final String[] PROTOCOL_PRESETS = {
+            "{lat},{lon}",
+            "LAT={lat},LON={lon}",
+            "{\"lat\":{lat},\"lon\":{lon}}",
+            "{lat},{lon},{acc}"
+    };
+    private static final String[] PROTOCOL_NAMES = {
+            "lat,lon", "LAT=..,LON=..", "JSON", "lat,lon,acc", "自定义"
+    };
 
     private ChinaMapView mapView;
     private TextView statusText;
@@ -77,6 +88,13 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private int mapType = TileSource.TYPE_VECTOR;
     private int tileProvider = TileSource.PROVIDER_ESRI;
     private String tdtKey = "";
+
+    private int protocolPreset;
+    private String protocolTemplate = LocationProtocol.DEFAULT_TEMPLATE;
+    private int protocolEncoding = LocationProtocol.ENC_UTF8;
+    private int protocolPrecision = 6;
+    private int protocolChecksum = LocationProtocol.CK_NONE;
+    private boolean protocolCrlf = true;
     private boolean connected;
     private boolean pendingConnect;
     private boolean logVisible;
@@ -87,6 +105,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private boolean showGrid = true;
     private boolean showAccuracy = true;
     private boolean showBubble = true;
+    private boolean showPhoneMarker = true;
 
     private AlertDialog deviceDialog;
     private DeviceAdapter deviceAdapter;
@@ -112,12 +131,20 @@ public class MainActivity extends Activity implements BtLink.Callback {
         mapType = prefs.getInt("mapType", TileSource.TYPE_VECTOR);
         tileProvider = prefs.getInt("tileProvider", TileSource.PROVIDER_AMAP);
         tdtKey = prefs.getString("tdtKey", "");
+        protocolPreset = prefs.getInt("protocolPreset", 0);
+        protocolTemplate = prefs.getString("protocolTemplate",
+                LocationProtocol.DEFAULT_TEMPLATE);
+        protocolEncoding = prefs.getInt("protocolEncoding", LocationProtocol.ENC_UTF8);
+        protocolPrecision = prefs.getInt("protocolPrecision", 6);
+        protocolChecksum = prefs.getInt("protocolChecksum", LocationProtocol.CK_NONE);
+        protocolCrlf = prefs.getBoolean("protocolCrlf", true);
         showCity = prefs.getBoolean("showCity", true);
         showCounty = prefs.getBoolean("showCounty", true);
         showLabels = prefs.getBoolean("showLabels", true);
         showGrid = prefs.getBoolean("showGrid", true);
         showAccuracy = prefs.getBoolean("showAccuracy", true);
         showBubble = prefs.getBoolean("showBubble", true);
+        showPhoneMarker = prefs.getBoolean("showPhoneMarker", true);
 
         mapView = findViewById(R.id.map);
         statusText = findViewById(R.id.status);
@@ -613,6 +640,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         items.add("演示数据（画一条示例轨迹）");
         items.add("输入测试坐标");
         items.add("定位并发送…");
+        items.add("定位协议…");
         items.add(logVisible ? "隐藏日志面板" : "显示日志面板");
         items.add("蓝牙诊断");
         items.add("向模块发送指令…");
@@ -639,6 +667,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
                         showInputDialog();
                     } else if (label.startsWith("定位并发送")) {
                         showLocationSendDialog();
+                    } else if (label.startsWith("定位协议")) {
+                        showProtocolDialog(null);
                     } else if (label.contains("日志面板")) {
                         toggleLog();
                     } else if (label.startsWith("蓝牙诊断")) {
@@ -795,8 +825,10 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showMapDisplayDialog() {
-        String[] items = {"显示市界", "显示县界", "显示地名", "显示经纬网", "显示定位精度圈", "显示坐标气泡"};
-        boolean[] checked = {showCity, showCounty, showLabels, showGrid, showAccuracy, showBubble};
+        String[] items = {"显示市界", "显示县界", "显示地名", "显示经纬网",
+                "显示定位精度圈", "显示坐标气泡", "显示当前定位"};
+        boolean[] checked = {showCity, showCounty, showLabels, showGrid,
+                showAccuracy, showBubble, showPhoneMarker};
         new AlertDialog.Builder(this)
                 .setTitle("地图显示")
                 .setMultiChoiceItems(items, checked, (d, which, isChecked) -> {
@@ -816,8 +848,11 @@ public class MainActivity extends Activity implements BtLink.Callback {
                         case 4:
                             showAccuracy = isChecked;
                             break;
-                        default:
+                        case 5:
                             showBubble = isChecked;
+                            break;
+                        default:
+                            showPhoneMarker = isChecked;
                             break;
                     }
                     prefs.edit()
@@ -827,6 +862,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
                             .putBoolean("showGrid", showGrid)
                             .putBoolean("showAccuracy", showAccuracy)
                             .putBoolean("showBubble", showBubble)
+                            .putBoolean("showPhoneMarker", showPhoneMarker)
                             .apply();
                     applyDisplaySettings();
                 })
@@ -841,6 +877,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         mapView.setGridVisible(showGrid);
         mapView.setAccuracyVisible(showAccuracy);
         mapView.setBubbleVisible(showBubble);
+        mapView.setPhoneMarkerVisible(showPhoneMarker);
     }
 
     private void showInputDialog() {
@@ -1009,6 +1046,208 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
+    private String protocolTemplateFor(int preset) {
+        if (preset >= 0 && preset < PROTOCOL_PRESETS.length) {
+            return PROTOCOL_PRESETS[preset];
+        }
+        return protocolTemplate;
+    }
+
+    private LocationProtocol protocolForPreset(int preset) {
+        return new LocationProtocol(protocolTemplateFor(preset),
+                protocolEncoding, protocolPrecision, protocolChecksum, protocolCrlf);
+    }
+
+    private LocationProtocol currentProtocol() {
+        return protocolForPreset(protocolPreset);
+    }
+
+    private LocationProtocol.Values sampleProtocolValues() {
+        return new LocationProtocol.Values(39.9042, 116.4074, 8, 50,
+                "网络定位", "network", "GCJ-02", System.currentTimeMillis());
+    }
+
+    private void showProtocolDialog(Runnable onSaved) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
+        box.setPadding(pad, pad / 2, pad, pad / 2);
+
+        final EditText template = new EditText(this);
+        template.setText(protocolTemplateFor(protocolPreset));
+        template.setTextSize(12);
+        template.setTypeface(Typeface.MONOSPACE);
+        template.setMinLines(3);
+        template.setHint("例如 {lat},{lon} 或 LAT={lat},LON={lon}");
+        box.addView(template);
+
+        TextView help = new TextView(this);
+        help.setTextSize(11);
+        help.setTextColor(0xFF607D8B);
+        help.setText("占位符：{lat} {lon} {lat6} {lon6} {acc} {alt} {src} "
+                + "{provider} {datum} {time} {date}\n"
+                + "校验：{xor8} {sum8} {crc16}；转义：\\r \\n \\t \\ \\xNN");
+        box.addView(help);
+
+        TextView encLabel = new TextView(this);
+        encLabel.setText("编码 / 精度 / 校验");
+        encLabel.setTextSize(12);
+        encLabel.setPadding(0, dp(8), 0, 0);
+        box.addView(encLabel);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+
+        final Spinner enc = new Spinner(this);
+        ArrayAdapter<String> ea = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item,
+                new String[]{"UTF-8", "GB2312"});
+        ea.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        enc.setAdapter(ea);
+        enc.setSelection(protocolEncoding == LocationProtocol.ENC_GB2312 ? 1 : 0);
+        row.addView(enc, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1.2f));
+
+        final Spinner prec = new Spinner(this);
+        ArrayAdapter<String> pa = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item,
+                new String[]{"4", "6", "7", "8"});
+        pa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        prec.setAdapter(pa);
+        int psel = protocolPrecision == 4 ? 0 : protocolPrecision == 7 ? 2
+                : protocolPrecision == 8 ? 3 : 1;
+        prec.setSelection(psel);
+        row.addView(prec, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 0.8f));
+
+        final Spinner ck = new Spinner(this);
+        ArrayAdapter<String> ca = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item,
+                new String[]{"无校验", "XOR8", "SUM8", "CRC16"});
+        ca.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        ck.setAdapter(ca);
+        ck.setSelection(protocolChecksum);
+        row.addView(ck, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1.2f));
+        box.addView(row);
+
+        final CheckBox crlf = new CheckBox(this);
+        crlf.setText("末尾自动追加 \r\n");
+        crlf.setChecked(protocolCrlf);
+        box.addView(crlf);
+
+        final TextView preview = new TextView(this);
+        preview.setTextSize(11);
+        preview.setTypeface(Typeface.MONOSPACE);
+        preview.setTextColor(0xFF263238);
+        preview.setText("预览…");
+        ScrollView previewScroll = new ScrollView(this);
+        previewScroll.addView(preview);
+        previewScroll.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(130)));
+        box.addView(previewScroll);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+
+        final Runnable refresh = () -> {
+            try {
+                LocationProtocol p = new LocationProtocol(
+                        template.getText().toString(),
+                        enc.getSelectedItemPosition() == 1
+                                ? LocationProtocol.ENC_GB2312 : LocationProtocol.ENC_UTF8,
+                        Integer.parseInt(prec.getSelectedItem().toString()),
+                        ck.getSelectedItemPosition(), crlf.isChecked());
+                LocationProtocol.Values v = sampleProtocolValues();
+                preview.setText((p.isBinary() ? "(二进制协议，按 hex 发送)"
+                        : p.text(v)) + "\nHEX " + p.hex(v));
+            } catch (Exception e) {
+                preview.setText("模板错误：" + e.getMessage());
+            }
+        };
+
+        template.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                refresh.run();
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+            }
+        });
+        android.widget.AdapterView.OnItemSelectedListener l =
+                new android.widget.AdapterView.OnItemSelectedListener() {
+                    @Override
+                    public void onItemSelected(android.widget.AdapterView<?> parent,
+                                               View view, int position, long id) {
+                        refresh.run();
+                    }
+
+                    @Override
+                    public void onNothingSelected(android.widget.AdapterView<?> parent) {
+                    }
+                };
+        enc.setOnItemSelectedListener(l);
+        prec.setOnItemSelectedListener(l);
+        ck.setOnItemSelectedListener(l);
+        crlf.setOnCheckedChangeListener((b, checked) -> refresh.run());
+
+        refresh.run();
+
+        new AlertDialog.Builder(this)
+                .setTitle("定位协议（自定义）")
+                .setView(scroll)
+                .setPositiveButton("保存", (d, w) -> {
+                    try {
+                        LocationProtocol p = new LocationProtocol(
+                                template.getText().toString(),
+                                enc.getSelectedItemPosition() == 1
+                                        ? LocationProtocol.ENC_GB2312
+                                        : LocationProtocol.ENC_UTF8,
+                                Integer.parseInt(prec.getSelectedItem().toString()),
+                                ck.getSelectedItemPosition(), crlf.isChecked());
+                        p.render(sampleProtocolValues());
+                    } catch (Exception e) {
+                        toast("协议不合法：" + e.getMessage());
+                        return;
+                    }
+                    protocolTemplate = template.getText().toString();
+                    protocolEncoding = enc.getSelectedItemPosition() == 1
+                            ? LocationProtocol.ENC_GB2312 : LocationProtocol.ENC_UTF8;
+                    protocolPrecision = Integer.parseInt(
+                            prec.getSelectedItem().toString());
+                    protocolChecksum = ck.getSelectedItemPosition();
+                    protocolCrlf = crlf.isChecked();
+                    protocolPreset = 4;
+                    prefs.edit()
+                            .putInt("protocolPreset", protocolPreset)
+                            .putString("protocolTemplate", protocolTemplate)
+                            .putInt("protocolEncoding", protocolEncoding)
+                            .putInt("protocolPrecision", protocolPrecision)
+                            .putInt("protocolChecksum", protocolChecksum)
+                            .putBoolean("protocolCrlf", protocolCrlf)
+                            .apply();
+                    if (onSaved != null) {
+                        onSaved.run();
+                    }
+                })
+                .setNeutralButton("恢复默认", (d, w) -> {
+                    template.setText(LocationProtocol.DEFAULT_TEMPLATE);
+                    enc.setSelection(0);
+                    prec.setSelection(1);
+                    ck.setSelection(0);
+                    crlf.setChecked(true);
+                    refresh.run();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
     private void showLocationSendDialog() {
         if (!hasLocationPermission()) {
             requestPermissions(new String[]{
@@ -1056,19 +1295,32 @@ public class MainActivity extends Activity implements BtLink.Callback {
         sourceGroup.addView(lastBt);
         box.addView(sourceGroup);
 
-        TextView fmtLabel = new TextView(this);
-        fmtLabel.setText("发送格式");
-        fmtLabel.setTextSize(12);
-        fmtLabel.setPadding(0, dp(6), 0, 0);
-        box.addView(fmtLabel);
+        TextView protoLabel = new TextView(this);
+        protoLabel.setText("发送协议");
+        protoLabel.setTextSize(12);
+        protoLabel.setPadding(0, dp(6), 0, 0);
+        box.addView(protoLabel);
 
-        final Spinner fmt = new Spinner(this);
-        String[] fmts = {"lat,lon", "LAT=..,LON=..", "lat,lon,精度"};
-        ArrayAdapter<String> fa = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, fmts);
-        fa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        fmt.setAdapter(fa);
-        box.addView(fmt);
+        final Spinner proto = new Spinner(this);
+        ArrayAdapter<String> pa = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, PROTOCOL_NAMES);
+        pa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        proto.setAdapter(pa);
+        proto.setSelection(Math.max(0, Math.min(protocolPreset,
+                PROTOCOL_NAMES.length - 1)));
+        box.addView(proto);
+
+        Button editProto = new Button(this);
+        editProto.setText("编辑协议…");
+        editProto.setTextSize(11);
+        editProto.setMinWidth(0);
+        editProto.setPadding(dp(8), 0, dp(8), 0);
+        box.addView(editProto);
+
+        final CheckBox autoMark = new CheckBox(this);
+        autoMark.setText("在地图上标注并居中");
+        autoMark.setChecked(true);
+        box.addView(autoMark);
 
         RadioGroup datumGroup = new RadioGroup(this);
         datumGroup.setOrientation(RadioGroup.HORIZONTAL);
@@ -1083,11 +1335,12 @@ public class MainActivity extends Activity implements BtLink.Callback {
         datumGroup.addView(cur);
         box.addView(datumGroup);
 
-        final EditText preview = new EditText(this);
+        final TextView preview = new TextView(this);
         preview.setTextSize(12);
         preview.setTypeface(Typeface.MONOSPACE);
+        preview.setTextColor(0xFF263238);
         preview.setMinLines(3);
-        preview.setHint("要发送的内容（可编辑）");
+        preview.setText("等待定位…");
         box.addView(preview);
 
         LinearLayout buttons = new LinearLayout(this);
@@ -1105,6 +1358,13 @@ public class MainActivity extends Activity implements BtLink.Callback {
         send.setMinWidth(0);
         send.setPadding(dp(8), 0, dp(8), 0);
         buttons.addView(send);
+
+        Button clearMark = new Button(this);
+        clearMark.setText("清除标注");
+        clearMark.setTextSize(11);
+        clearMark.setMinWidth(0);
+        clearMark.setPadding(dp(8), 0, dp(8), 0);
+        buttons.addView(clearMark);
         box.addView(buttons);
 
         final TextView result = new TextView(this);
@@ -1133,12 +1393,15 @@ public class MainActivity extends Activity implements BtLink.Callback {
         final int[] source = {0};
         final int[] sendDatum = {CoordSystems.WGS84};
 
+        final byte[][] lastBytes = {null};
+        final boolean[] marked = {false};
         final Runnable render = () -> {
             LocationHelper.Fix f = current[0];
             if (f == null) {
                 coords.setText("WGS-84：—\nGCJ-02：—");
                 meta.setText("来源/精度/时间：—");
-                preview.setText("");
+                preview.setText("等待定位…");
+                lastBytes[0] = null;
                 return;
             }
             double[] gcj = CoordSystems.toMap(CoordSystems.WGS84, f.lat, f.lon);
@@ -1151,14 +1414,37 @@ public class MainActivity extends Activity implements BtLink.Callback {
 
             double lat = f.lat;
             double lon = f.lon;
+            String datumName = "WGS-84";
             if (sendDatum[0] != CoordSystems.WGS84) {
                 double[] d = CoordSystems.fromWgs84(sendDatum[0], f.lat, f.lon);
                 lat = d[0];
                 lon = d[1];
+                datumName = CoordSystems.name(sendDatum[0]);
             }
-            int style = fmt.getSelectedItemPosition();
-            String text = LocationPayload.format(lat, lon, f.accuracy, style);
-            preview.setText(LocationPayload.ensureCrlf(text));
+            try {
+                LocationProtocol p = protocolForPreset(proto.getSelectedItemPosition());
+                LocationProtocol.Values v = new LocationProtocol.Values(
+                        lat, lon, f.accuracy, f.altitude, f.source, f.provider,
+                        datumName, f.time);
+                byte[] data = p.render(v);
+                lastBytes[0] = data;
+                String hex = SpinnerProtocol.hex(data);
+                if (p.isBinary()) {
+                    preview.setText("HEX " + hex);
+                } else {
+                    preview.setText(p.text(v) + "\nHEX " + hex);
+                }
+            } catch (IllegalArgumentException e) {
+                lastBytes[0] = null;
+                preview.setText("协议错误：" + e.getMessage());
+            }
+
+            if (autoMark.isChecked()) {
+                boolean center = !marked[0];
+                marked[0] = true;
+                mapView.setPhoneLocation(f.lat, f.lon, f.accuracy, f.provider,
+                        f.source, f.time, center);
+            }
         };
 
         final Runnable locateRun = () -> {
@@ -1197,8 +1483,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
             int i = n - 1;
             current[0] = new LocationHelper.Fix(
                     TrackStore.INSTANCE.wgsLat(i), TrackStore.INSTANCE.wgsLon(i),
-                    TrackStore.INSTANCE.accuracy(i), "最后蓝牙点",
-                    TrackStore.INSTANCE.time(i), "最后蓝牙点");
+                    TrackStore.INSTANCE.accuracy(i), TrackStore.INSTANCE.alt(i),
+                    "最后蓝牙点", TrackStore.INSTANCE.time(i), "最后蓝牙点");
             source[0] = 1;
             status.setText("使用最后一个蓝牙坐标");
             render.run();
@@ -1211,16 +1497,28 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 locateRun.run();
             }
         });
-        fmt.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+        proto.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view,
                                        int position, long id) {
+                protocolPreset = position;
+                prefs.edit().putInt("protocolPreset", protocolPreset).apply();
                 render.run();
             }
 
             @Override
             public void onNothingSelected(android.widget.AdapterView<?> parent) {
             }
+        });
+        editProto.setOnClickListener(v -> showProtocolDialog(() -> {
+            protocolPreset = 4;
+            proto.setSelection(4);
+            render.run();
+        }));
+        clearMark.setOnClickListener(v -> {
+            mapView.clearPhoneLocation();
+            marked[0] = false;
+            result.append("\n已清除地图上的当前定位标注\n");
         });
         datumGroup.setOnCheckedChangeListener((group, checkedId) -> {
             sendDatum[0] = checkedId == cur.getId() ? datum : CoordSystems.WGS84;
@@ -1246,12 +1544,11 @@ public class MainActivity extends Activity implements BtLink.Callback {
         });
 
         send.setOnClickListener(v -> {
-            String text = preview.getText().toString();
-            if (text.trim().isEmpty()) {
-                toast("没有可发送的内容");
+            byte[] payload = lastBytes[0];
+            if (payload == null || payload.length == 0) {
+                toast("没有可发送的协议内容，请先定位或检查协议");
                 return;
             }
-            byte[] payload = LocationPayload.bytes(text);
             result.append("\n→ 发送 " + payload.length + " 字节，等待回包…\n");
             bt.sendCommand(payload, cb);
         });
@@ -1394,7 +1691,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "中国地图蓝牙轨迹  v1.2.5\n\n"
+        String msg = "中国地图蓝牙轨迹  v1.2.6\n\n"
                 + "· 标准底图内置到县级（GCJ-02），完全离线\n"
                 + "· 街道/卫星/卫星+路网/地形为在线瓦片，需要网络\n"
                 + "· 输入坐标系可选：GCJ-02 / WGS-84 / BD-09 / CGCS2000\n"

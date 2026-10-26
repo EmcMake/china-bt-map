@@ -19,6 +19,7 @@ public final class LocationHelper {
         public final double lat;
         public final double lon;
         public final double accuracy;
+        public final double altitude;
         public final String provider;
         public final long time;
         public final String source;
@@ -27,15 +28,22 @@ public final class LocationHelper {
             this.lat = l.getLatitude();
             this.lon = l.getLongitude();
             this.accuracy = l.hasAccuracy() ? l.getAccuracy() : 0;
+            this.altitude = l.hasAltitude() ? l.getAltitude() : 0;
             this.provider = l.getProvider() == null ? "" : l.getProvider();
             this.time = l.getTime();
             this.source = source;
         }
 
         public Fix(double lat, double lon, double accuracy, String provider, long time, String source) {
+            this(lat, lon, accuracy, 0, provider, time, source);
+        }
+
+        public Fix(double lat, double lon, double accuracy, double altitude,
+                   String provider, long time, String source) {
             this.lat = lat;
             this.lon = lon;
             this.accuracy = accuracy;
+            this.altitude = altitude;
             this.provider = provider;
             this.time = time;
             this.source = source;
