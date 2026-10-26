@@ -5,9 +5,9 @@
 标准底图完全离线；街道 / 卫星 / 卫星+路网 / 地形为在线瓦片（需要网络）。
 
 - GitHub 仓库：<https://github.com/EmcMake/china-bt-map>
-- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.6 附件为 `china-bt-map-1.2.6.apk`）
-- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.6.apk>（点 Download）
-- 安装包：`dist/china-bt-map-1.2.6.apk`（约 7 MB，已签名）
+- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.7 附件为 `china-bt-map-1.2.7.apk`）
+- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.7.apk>（点 Download）
+- 安装包：`dist/china-bt-map-1.2.7.apk`（约 7 MB，已签名）
 - 包名：`com.btmap.china`，最低 Android 7.0（API 24），targetSdk 34
 - 纯 Java + Framework API，无 AndroidX / GMS / native 依赖
 - 权限：蓝牙相关 + `INTERNET` / `ACCESS_NETWORK_STATE`（仅在线图层使用）
@@ -16,11 +16,11 @@
 
 ## 一、安装
 
-把 `dist/china-bt-map-1.2.6.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
+把 `dist/china-bt-map-1.2.7.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
 系统提示“未知来源”时允许一次即可。或用 adb：
 
 ```bash
-adb install -r dist/china-bt-map-1.2.6.apk
+adb install -r dist/china-bt-map-1.2.7.apk
 ```
 
 > 自签名证书仅用于个人侧载，不能上架应用商店。升级请用同一个 `keystore/release.jks`
@@ -145,6 +145,19 @@ App 的做法：
 - 手机定位不会写入蓝牙轨迹，不会产生轨迹点。
 
 ![当前定位红点](docs/screenshots/location_marker_phone.png)
+
+
+### 连接期间持续定位（红点不消失）
+
+- BLE 连接后自动开始持续定位：GPS/网络，约 2 秒更新一次；
+- 红点/气泡实时更新，关闭“定位并发送”、切换底图、拖动地图都不会丢；
+- 红点移出屏幕时，屏幕边缘显示“当前定位”胶囊，点一下回到中心；
+- 短暂无 fix 显示“信号弱/最后更新 Ns 前”，**不删除红点**；
+- BLE 断开时停止更新，红点保留并标“已断开”；重新连接自动恢复；
+- App 重启后从本地恢复上次红点；
+- 地图显示里可开关“持续定位 / 显示当前定位”。
+
+![持续定位](docs/screenshots/location_continuous_phone.png)
 
 ## 六、坐标数据格式（一行一个点）
 

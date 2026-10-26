@@ -106,6 +106,13 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private boolean showAccuracy = true;
     private boolean showBubble = true;
     private boolean showPhoneMarker = true;
+    private boolean continuousLocation = true;
+    private boolean locationPermissionAsked;
+    private boolean pendingLocationDialog;
+    private boolean locationAutoCentered;
+    private long lastPhonePersist;
+
+    private LocationHelper locationHelper;
 
     private AlertDialog deviceDialog;
     private DeviceAdapter deviceAdapter;
@@ -145,8 +152,12 @@ public class MainActivity extends Activity implements BtLink.Callback {
         showAccuracy = prefs.getBoolean("showAccuracy", true);
         showBubble = prefs.getBoolean("showBubble", true);
         showPhoneMarker = prefs.getBoolean("showPhoneMarker", true);
+        continuousLocation = prefs.getBoolean("continuousLocation", true);
 
         mapView = findViewById(R.id.map);
+        locationHelper = new LocationHelper(this);
+        locationHelper.addListener(locationListener);
+        restorePhoneLocation();
         statusText = findViewById(R.id.status);
         coordText = findViewById(R.id.coordText);
         countText = findViewById(R.id.countText);
@@ -241,6 +252,30 @@ public class MainActivity extends Activity implements BtLink.Callback {
         } else if (demo) {
             injectDemo();
         }
+        if (intent.getBooleanExtra("start_location", false)) {
+            continuousLocation = true;
+            showPhoneMarker = true;
+            prefs.edit().putBoolean("continuousLocation", true)
+                    .putBoolean("showPhoneMarker", true).apply();
+            if (locationHelper.hasPermission()) {
+                locationAutoCentered = false;
+                locationHelper.startTracking(2000, 1);
+                mapView.setPhoneTracking(true);
+            } else {
+                pendingLocationDialog = false;
+                requestPermissions(new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOCATION);
+            }
+        }
+        if (intent.getBooleanExtra("clear_location", false)) {
+            mapView.clearPhoneLocation();
+            showPhoneMarker = false;
+            prefs.edit().putBoolean("showPhoneMarker", false)
+                    .remove("phoneLat").remove("phoneLon")
+                    .remove("phoneAcc").remove("phoneProvider")
+                    .remove("phoneSource").remove("phoneTime").apply();
+        }
         if (intent.getBooleanExtra("show_log", false) && !logVisible) {
             toggleLog();
         }
@@ -307,8 +342,16 @@ public class MainActivity extends Activity implements BtLink.Callback {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQ_LOCATION) {
-            if (hasLocationPermission()) {
-                showLocationSendDialog();
+            boolean granted = hasLocationPermission();
+            boolean openDialog = pendingLocationDialog;
+            pendingLocationDialog = false;
+            locationPermissionAsked = true;
+            if (granted) {
+                if (openDialog) {
+                    showLocationSendDialog();
+                } else if (connected && continuousLocation) {
+                    startContinuousLocation();
+                }
             } else {
                 toast("需要定位权限才能获取当前经纬度");
                 addLog("定位权限被拒绝：请在系统设置 → 应用 → 权限中允许“位置”");
@@ -417,6 +460,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
             connected = isConnected;
             if (isConnected) {
                 getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                locationAutoCentered = false;
+                startContinuousLocation();
                 BtLink.DeviceItem d = bt.lastDevice();
                 if (d != null) {
                     prefs.edit()
@@ -426,6 +471,12 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 }
             } else {
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                if (locationHelper != null) {
+                    locationHelper.stopTracking();
+                }
+                if (mapView != null) {
+                    mapView.setPhoneTracking(false);
+                }
             }
             if (isConnected != wasConnected) {
                 addLog("状态: " + text);
@@ -826,9 +877,9 @@ public class MainActivity extends Activity implements BtLink.Callback {
 
     private void showMapDisplayDialog() {
         String[] items = {"显示市界", "显示县界", "显示地名", "显示经纬网",
-                "显示定位精度圈", "显示坐标气泡", "显示当前定位"};
+                "显示定位精度圈", "显示坐标气泡", "显示当前定位", "持续定位"};
         boolean[] checked = {showCity, showCounty, showLabels, showGrid,
-                showAccuracy, showBubble, showPhoneMarker};
+                showAccuracy, showBubble, showPhoneMarker, continuousLocation};
         new AlertDialog.Builder(this)
                 .setTitle("地图显示")
                 .setMultiChoiceItems(items, checked, (d, which, isChecked) -> {
@@ -851,8 +902,11 @@ public class MainActivity extends Activity implements BtLink.Callback {
                         case 5:
                             showBubble = isChecked;
                             break;
-                        default:
+                        case 6:
                             showPhoneMarker = isChecked;
+                            break;
+                        default:
+                            continuousLocation = isChecked;
                             break;
                     }
                     prefs.edit()
@@ -863,7 +917,18 @@ public class MainActivity extends Activity implements BtLink.Callback {
                             .putBoolean("showAccuracy", showAccuracy)
                             .putBoolean("showBubble", showBubble)
                             .putBoolean("showPhoneMarker", showPhoneMarker)
+                            .putBoolean("continuousLocation", continuousLocation)
                             .apply();
+                    if (which == 7) {
+                        if (continuousLocation && connected) {
+                            startContinuousLocation();
+                        } else if (!continuousLocation && locationHelper != null) {
+                            locationHelper.stopTracking();
+                            if (mapView != null) {
+                                mapView.setPhoneTracking(false);
+                            }
+                        }
+                    }
                     applyDisplaySettings();
                 })
                 .setPositiveButton("完成", null)
@@ -1248,8 +1313,82 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 .show();
     }
 
+    private final LocationHelper.Listener locationListener = new LocationHelper.Listener() {
+        @Override
+        public void onFix(LocationHelper.Fix fix) {
+            runOnUiThread(() -> handlePhoneFix(fix));
+        }
+
+        @Override
+        public void onError(String message) {
+            runOnUiThread(() -> addLog("定位: " + message));
+        }
+    };
+
+    private void handlePhoneFix(LocationHelper.Fix f) {
+        if (mapView == null) {
+            return;
+        }
+        boolean center = showPhoneMarker && !locationAutoCentered;
+        locationAutoCentered = true;
+        mapView.setPhoneLocation(f.lat, f.lon, f.accuracy, f.provider, f.source,
+                f.time, center);
+        mapView.setPhoneTracking(locationHelper.isTracking());
+        long now = System.currentTimeMillis();
+        if (now - lastPhonePersist >= 5000) {
+            lastPhonePersist = now;
+            prefs.edit()
+                    .putLong("phoneLat", Math.round(f.lat * 1_000_000L))
+                    .putLong("phoneLon", Math.round(f.lon * 1_000_000L))
+                    .putFloat("phoneAcc", (float) f.accuracy)
+                    .putString("phoneProvider", f.provider)
+                    .putString("phoneSource", f.source)
+                    .putLong("phoneTime", f.time)
+                    .apply();
+        }
+    }
+
+    private void restorePhoneLocation() {
+        long lat = prefs.getLong("phoneLat", 0);
+        long lon = prefs.getLong("phoneLon", 0);
+        long time = prefs.getLong("phoneTime", 0);
+        if (lat == 0 && lon == 0 || time <= 0) {
+            return;
+        }
+        String provider = prefs.getString("phoneProvider", "");
+        String source = prefs.getString("phoneSource", "上次定位");
+        float acc = prefs.getFloat("phoneAcc", 0f);
+        mapView.setPhoneLocation(lat / 1_000_000.0, lon / 1_000_000.0, acc,
+                provider, source, time, false);
+        mapView.setPhoneTracking(false);
+        locationAutoCentered = true;
+    }
+
+    private void startContinuousLocation() {
+        if (!continuousLocation || locationHelper == null) {
+            return;
+        }
+        if (!locationHelper.hasPermission()) {
+            if (!locationPermissionAsked) {
+                locationPermissionAsked = true;
+                pendingLocationDialog = false;
+                requestPermissions(new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOCATION);
+            }
+            return;
+        }
+        locationAutoCentered = false;
+        locationHelper.startTracking(2000, 1);
+        if (mapView != null) {
+            mapView.setPhoneTracking(true);
+        }
+        addLog("开始持续定位（GPS/网络，约 2 秒一次）");
+    }
+
     private void showLocationSendDialog() {
         if (!hasLocationPermission()) {
+            pendingLocationDialog = true;
             requestPermissions(new String[]{
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOCATION);
@@ -1317,11 +1456,6 @@ public class MainActivity extends Activity implements BtLink.Callback {
         editProto.setPadding(dp(8), 0, dp(8), 0);
         box.addView(editProto);
 
-        final CheckBox autoMark = new CheckBox(this);
-        autoMark.setText("在地图上标注并居中");
-        autoMark.setChecked(true);
-        box.addView(autoMark);
-
         RadioGroup datumGroup = new RadioGroup(this);
         datumGroup.setOrientation(RadioGroup.HORIZONTAL);
         final RadioButton wgs = new RadioButton(this);
@@ -1388,13 +1522,11 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 .setNegativeButton("关闭", null)
                 .create();
 
-        final LocationHelper helper = new LocationHelper(this);
-        final LocationHelper.Fix[] current = {null};
+        final LocationHelper.Fix[] current = {locationHelper.lastFix()};
         final int[] source = {0};
         final int[] sendDatum = {CoordSystems.WGS84};
 
         final byte[][] lastBytes = {null};
-        final boolean[] marked = {false};
         final Runnable render = () -> {
             LocationHelper.Fix f = current[0];
             if (f == null) {
@@ -1439,37 +1571,28 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 preview.setText("协议错误：" + e.getMessage());
             }
 
-            if (autoMark.isChecked()) {
-                boolean center = !marked[0];
-                marked[0] = true;
-                mapView.setPhoneLocation(f.lat, f.lon, f.accuracy, f.provider,
-                        f.source, f.time, center);
-            }
         };
 
         final Runnable locateRun = () -> {
-            status.setText("正在定位…");
-            helper.requestFix(10000, new LocationHelper.Callback() {
-                @Override
-                public void onFix(LocationHelper.Fix fix) {
-                    if (!dialog.isShowing()) {
-                        return;
-                    }
-                    current[0] = fix;
-                    source[0] = 0;
-                    status.setText("已定位（" + fix.source + "）");
-                    render.run();
-                }
-
-                @Override
-                public void onError(String message) {
-                    if (!dialog.isShowing()) {
-                        return;
-                    }
-                    status.setText(message);
-                    result.append("\n定位失败：" + message + "\n");
-                }
-            });
+            if (!locationHelper.hasPermission()) {
+                pendingLocationDialog = true;
+                requestPermissions(new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOCATION);
+                return;
+            }
+            LocationHelper.Fix last = locationHelper.lastFix();
+            if (last != null) {
+                current[0] = last;
+                render.run();
+            }
+            if (locationHelper.isTracking()) {
+                status.setText("持续定位中（GPS/网络）");
+                locationHelper.requestFresh();
+            } else {
+                status.setText("正在定位…");
+                locationHelper.requestFix(10000, null);
+            }
         };
 
         final Runnable lastRun = () -> {
@@ -1517,8 +1640,15 @@ public class MainActivity extends Activity implements BtLink.Callback {
         }));
         clearMark.setOnClickListener(v -> {
             mapView.clearPhoneLocation();
-            marked[0] = false;
-            result.append("\n已清除地图上的当前定位标注\n");
+            showPhoneMarker = false;
+            prefs.edit()
+                    .putBoolean("showPhoneMarker", false)
+                    .remove("phoneLat").remove("phoneLon")
+                    .remove("phoneAcc").remove("phoneProvider")
+                    .remove("phoneSource").remove("phoneTime")
+                    .apply();
+            applyDisplaySettings();
+            result.append("\n已清除地图上的当前定位标注（可在“地图显示”里重新打开）\n");
         });
         datumGroup.setOnCheckedChangeListener((group, checkedId) -> {
             sendDatum[0] = checkedId == cur.getId() ? datum : CoordSystems.WGS84;
@@ -1553,7 +1683,31 @@ public class MainActivity extends Activity implements BtLink.Callback {
             bt.sendCommand(payload, cb);
         });
 
-        dialog.setOnDismissListener(d -> helper.cancel());
+        final LocationHelper.Listener live = new LocationHelper.Listener() {
+            @Override
+            public void onFix(LocationHelper.Fix fix) {
+                runOnUiThread(() -> {
+                    if (!dialog.isShowing()) {
+                        return;
+                    }
+                    current[0] = fix;
+                    status.setText("已定位（" + fix.source + "）");
+                    render.run();
+                });
+            }
+
+            @Override
+            public void onError(String message) {
+                runOnUiThread(() -> {
+                    if (!dialog.isShowing()) {
+                        return;
+                    }
+                    status.setText(message);
+                });
+            }
+        };
+        locationHelper.addListener(live);
+        dialog.setOnDismissListener(d -> locationHelper.removeListener(live));
         dialog.show();
         locateRun.run();
     }
@@ -1691,7 +1845,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "中国地图蓝牙轨迹  v1.2.6\n\n"
+        String msg = "中国地图蓝牙轨迹  v1.2.7\n\n"
                 + "· 标准底图内置到县级（GCJ-02），完全离线\n"
                 + "· 街道/卫星/卫星+路网/地形为在线瓦片，需要网络\n"
                 + "· 输入坐标系可选：GCJ-02 / WGS-84 / BD-09 / CGCS2000\n"
@@ -1834,6 +1988,10 @@ public class MainActivity extends Activity implements BtLink.Callback {
 
     @Override
     protected void onDestroy() {
+        if (locationHelper != null) {
+            locationHelper.removeListener(locationListener);
+            locationHelper.stopAll();
+        }
         TrackStore.INSTANCE.removeListener(trackListener);
         if (bt != null) {
             bt.release();

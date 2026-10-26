@@ -13,8 +13,24 @@ import android.os.Looper;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 用系统 LocationManager 取一次当前定位，带超时和最后已知兜底。 */
+/**
+ * 系统 LocationManager 封装：
+ * <ul>
+ *   <li>requestFix：一次性定位（10 秒超时 + 最后已知兜底）；</li>
+ *   <li>startTracking/stopTracking：持续定位（BLE 连接期间每 2 秒更新）。</li>
+ * </ul>
+ */
 public final class LocationHelper {
+    public interface Listener {
+        void onFix(Fix fix);
+
+        void onError(String message);
+    }
+
+    /** 兼容旧的一次性回调。 */
+    public interface Callback extends Listener {
+    }
+
     public static final class Fix {
         public final double lat;
         public final double lon;
@@ -50,23 +66,41 @@ public final class LocationHelper {
         }
     }
 
-    public interface Callback {
-        void onFix(Fix fix);
-
-        void onError(String message);
-    }
-
     private final Context context;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final LocationManager manager;
-    private LocationListener listener;
+    private final List<Listener> listeners = new ArrayList<>();
+
+    private LocationListener oneShotListener;
     private Runnable timeout;
     private boolean deliveredAny;
     private Fix best;
 
+    private LocationListener trackingListener;
+    private boolean tracking;
+    private Fix lastFix;
+
     public LocationHelper(Context context) {
         this.context = context.getApplicationContext();
         this.manager = (LocationManager) this.context.getSystemService(Context.LOCATION_SERVICE);
+    }
+
+    public void addListener(Listener l) {
+        if (l != null && !listeners.contains(l)) {
+            listeners.add(l);
+        }
+    }
+
+    public void removeListener(Listener l) {
+        listeners.remove(l);
+    }
+
+    public Fix lastFix() {
+        return lastFix;
+    }
+
+    public boolean isTracking() {
+        return tracking;
     }
 
     public boolean hasPermission() {
@@ -96,62 +130,145 @@ public final class LocationHelper {
         }
     }
 
-    public void requestFix(long timeoutMs, Callback cb) {
-        main.post(() -> start(timeoutMs, cb));
+    // ------------------------------------------------------------ 持续定位
+
+    public void startTracking(long intervalMs, long minDistanceM) {
+        main.post(() -> {
+            if (tracking) {
+                return;
+            }
+            if (manager == null) {
+                notifyError("本机没有定位服务");
+                return;
+            }
+            if (!hasPermission()) {
+                notifyError("没有定位权限");
+                return;
+            }
+            if (!isEnabled()) {
+                notifyError("定位/GPS 未开启，请在系统设置里打开定位");
+                return;
+            }
+            List<String> providers = enabledProviders();
+            if (providers.isEmpty()) {
+                notifyError("没有可用的定位 provider（GPS/网络都关闭）");
+                return;
+            }
+
+            trackingListener = new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    if (location != null) {
+                        notifyFix(new Fix(location, providerName(location.getProvider())));
+                    }
+                }
+
+                @Override
+                public void onStatusChanged(String provider, int status, Bundle extras) {
+                }
+
+                @Override
+                public void onProviderEnabled(String provider) {
+                }
+
+                @Override
+                public void onProviderDisabled(String provider) {
+                    notifyError("定位 provider 已关闭：" + provider);
+                }
+            };
+            for (String p : providers) {
+                try {
+                    manager.requestLocationUpdates(p, Math.max(0, intervalMs),
+                            Math.max(0, minDistanceM), trackingListener,
+                            Looper.getMainLooper());
+                } catch (SecurityException ignored) {
+                } catch (Throwable ignored) {
+                }
+            }
+            tracking = true;
+        });
     }
 
-    private void start(long timeoutMs, Callback cb) {
-        cancel();
+    public void stopTracking() {
+        main.post(() -> {
+            if (manager != null && trackingListener != null) {
+                try {
+                    manager.removeUpdates(trackingListener);
+                } catch (Throwable ignored) {
+                }
+            }
+            trackingListener = null;
+            tracking = false;
+        });
+    }
+
+    public void requestFresh() {
+        main.post(() -> {
+            Fix f = lastFix;
+            if (f != null) {
+                notifyFix(f);
+            }
+        });
+    }
+
+    // ------------------------------------------------------------ 一次性定位
+
+    public void requestFix(long timeoutMs, Callback cb) {
+        main.post(() -> startOneShot(timeoutMs, cb));
+    }
+
+    private void startOneShot(long timeoutMs, Callback cb) {
+        cancelOneShot();
         deliveredAny = false;
         best = null;
         if (manager == null) {
-            cb.onError("本机没有定位服务");
+            error(cb, "本机没有定位服务");
             return;
         }
         if (!hasPermission()) {
-            cb.onError("没有定位权限");
+            error(cb, "没有定位权限");
             return;
         }
         if (!isEnabled()) {
-            cb.onError("定位/GPS 未开启，请在系统设置里打开定位");
+            error(cb, "定位/GPS 未开启，请在系统设置里打开定位");
             return;
         }
 
         best = bestLastKnown();
         if (best != null && System.currentTimeMillis() - best.time < 120_000) {
-            // 先给一个“最后已知”，同时继续请求一次新定位；新 fix 到了会再回调覆盖。
             deliveredAny = true;
-            cb.onFix(best);
+            notifyFix(best);
+            if (cb != null) {
+                cb.onFix(best);
+            }
         }
 
-        List<String> providers = new ArrayList<>();
-        try {
-            if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                providers.add(LocationManager.GPS_PROVIDER);
-            }
-            if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                providers.add(LocationManager.NETWORK_PROVIDER);
-            }
-        } catch (Throwable ignored) {
-        }
+        List<String> providers = enabledProviders();
         if (providers.isEmpty()) {
             if (best != null) {
                 deliveredAny = true;
-                cb.onFix(best);
+                notifyFix(best);
+                if (cb != null) {
+                    cb.onFix(best);
+                }
             } else {
-                cb.onError("没有可用的定位 provider（GPS/网络都关闭）");
+                error(cb, "没有可用的定位 provider（GPS/网络都关闭）");
             }
-            cleanup();
+            cleanupOneShot();
             return;
         }
 
-        listener = new LocationListener() {
+        oneShotListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
                 if (location != null) {
                     deliveredAny = true;
-                    cb.onFix(new Fix(location, providerName(location.getProvider())));
-                    cleanup();
+                    Fix f = new Fix(location, providerName(location.getProvider()));
+                    notifyFix(f);
+                    if (cb != null) {
+                        cb.onFix(f);
+                    }
+                    cleanupOneShot();
                 }
             }
 
@@ -170,10 +287,9 @@ public final class LocationHelper {
 
         for (String p : providers) {
             try {
-                manager.requestLocationUpdates(p, 0L, 0f, listener,
+                manager.requestLocationUpdates(p, 0L, 0f, oneShotListener,
                         Looper.getMainLooper());
-            } catch (SecurityException e) {
-                // 权限在请求过程中被撤销：继续尝试其他 provider
+            } catch (SecurityException ignored) {
             } catch (Throwable ignored) {
             }
         }
@@ -182,15 +298,33 @@ public final class LocationHelper {
             if (!deliveredAny) {
                 if (best != null) {
                     deliveredAny = true;
-                    cb.onFix(new Fix(best.lat, best.lon, best.accuracy, best.provider,
-                            best.time, "最后已知（可能较旧）"));
+                    Fix f = new Fix(best.lat, best.lon, best.accuracy, best.altitude,
+                            best.provider, best.time, "最后已知（可能较旧）");
+                    notifyFix(f);
+                    if (cb != null) {
+                        cb.onFix(f);
+                    }
                 } else {
-                    cb.onError("定位超时：室内/GPS 信号弱，可重试或改用“最后蓝牙点”");
+                    error(cb, "定位超时：室内/GPS 信号弱，可重试或改用“最后蓝牙点”");
                 }
             }
-            cleanup();
+            cleanupOneShot();
         };
         main.postDelayed(timeout, timeoutMs);
+    }
+
+    private List<String> enabledProviders() {
+        List<String> providers = new ArrayList<>();
+        try {
+            if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                providers.add(LocationManager.GPS_PROVIDER);
+            }
+            if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                providers.add(LocationManager.NETWORK_PROVIDER);
+            }
+        } catch (Throwable ignored) {
+        }
+        return providers;
     }
 
     private Fix bestLastKnown() {
@@ -223,31 +357,66 @@ public final class LocationHelper {
         return provider == null ? "" : provider;
     }
 
-    public void cancel() {
-        if (timeout != null) {
-            main.removeCallbacks(timeout);
-            timeout = null;
-        }
-        if (manager != null && listener != null) {
+    private void notifyFix(Fix fix) {
+        lastFix = fix;
+        for (Listener l : new ArrayList<>(listeners)) {
             try {
-                manager.removeUpdates(listener);
+                l.onFix(fix);
             } catch (Throwable ignored) {
             }
         }
-        listener = null;
     }
 
-    private void cleanup() {
+    private void notifyError(String message) {
+        for (Listener l : new ArrayList<>(listeners)) {
+            try {
+                l.onError(message);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    private void error(Callback cb, String message) {
+        if (cb != null) {
+            cb.onError(message);
+        }
+        notifyError(message);
+    }
+
+    public void cancel() {
+        cancelOneShot();
+    }
+
+    public void stopAll() {
+        stopTracking();
+        cancelOneShot();
+    }
+
+    private void cancelOneShot() {
         if (timeout != null) {
             main.removeCallbacks(timeout);
             timeout = null;
         }
-        if (manager != null && listener != null) {
+        if (manager != null && oneShotListener != null) {
             try {
-                manager.removeUpdates(listener);
+                manager.removeUpdates(oneShotListener);
             } catch (Throwable ignored) {
             }
-            listener = null;
+        }
+        oneShotListener = null;
+    }
+
+    private void cleanupOneShot() {
+        if (timeout != null) {
+            main.removeCallbacks(timeout);
+            timeout = null;
+        }
+        if (manager != null && oneShotListener != null) {
+            try {
+                manager.removeUpdates(oneShotListener);
+            } catch (Throwable ignored) {
+            }
+            oneShotListener = null;
         }
     }
 }

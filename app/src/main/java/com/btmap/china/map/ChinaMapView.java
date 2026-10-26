@@ -148,6 +148,9 @@ public class ChinaMapView extends View {
     private String phoneProvider = "";
     private String phoneSource = "";
     private long phoneTime;
+    private boolean phoneTracking;
+    private boolean phoneOffscreenVisible;
+    private final RectF phoneOffscreenRect = new RectF();
 
     private boolean pinching;
     private long tapDownTime;
@@ -628,11 +631,30 @@ public class ChinaMapView extends View {
 
     public void clearPhoneLocation() {
         phoneVisible = false;
+        phoneOffscreenVisible = false;
         invalidate();
     }
 
     public boolean hasPhoneLocation() {
         return phoneVisible;
+    }
+
+    public void setPhoneTracking(boolean tracking) {
+        phoneTracking = tracking;
+        invalidate();
+    }
+
+    public void centerOnPhone() {
+        if (!phoneVisible) {
+            return;
+        }
+        double[] ll = phoneMapLatLon();
+        double wx = Mercator.lonToX(ll[1]);
+        double wy = Mercator.latToY(ll[0]);
+        offsetX = getWidth() / 2.0 - wx * scale;
+        offsetY = getHeight() / 2.0 - wy * scale;
+        clampPan();
+        invalidate();
     }
 
     public void setPhoneMarkerVisible(boolean v) {
@@ -1407,8 +1429,10 @@ public class ChinaMapView extends View {
         float cy = pt[1];
         if (cx < -dp(20f) || cx > getWidth() + dp(20f)
                 || cy < -dp(20f) || cy > getHeight() + dp(20f)) {
+            drawPhoneOffscreen(canvas, cx, cy);
             return;
         }
+        phoneOffscreenVisible = false;
 
         if (accuracyVisible && phoneAccuracy > 0.5) {
             double world = phoneAccuracy / Mercator.metersPerWorldUnit(phoneWgsLat);
@@ -1429,16 +1453,49 @@ public class ChinaMapView extends View {
         if (bubbleVisible) {
             drawPhoneBubble(canvas, cx, cy, ll[0], ll[1]);
         }
+        // 只为刷新“最后更新 N 秒前”，5 秒一次
+        postInvalidateDelayed(5000);
+    }
+
+    private void drawPhoneOffscreen(Canvas canvas, float cx, float cy) {
+        float left = dp(16f), top = dp(108f);
+        float right = getWidth() - dp(16f), bottom = getHeight() - dp(120f);
+        float ax = Math.max(left, Math.min(right, cx));
+        float ay = Math.max(top, Math.min(bottom, cy));
+        String text = "当前定位";
+        float w = pOffText.measureText(text) + dp(22f);
+        float h = dp(30f);
+        float bx = Math.max(dp(8f), Math.min(getWidth() - w - dp(8f), ax - w / 2f));
+        float by = Math.max(dp(142f), Math.min(getHeight() - dp(124f) - h, ay - h / 2f));
+        RectF r = new RectF(bx, by, bx + w, by + h);
+        canvas.drawRoundRect(r, h / 2f, h / 2f, pBubbleBg);
+        pPhoneRing.setStrokeWidth(dp(1.2f));
+        canvas.drawRoundRect(r, h / 2f, h / 2f, pPhoneRing);
+        canvas.drawText(text, bx + w / 2f,
+                by + h / 2f + pOffText.getTextSize() * 0.36f, pOffText);
+        phoneOffscreenRect.set(r);
+        phoneOffscreenVisible = true;
     }
 
     private void drawPhoneBubble(Canvas canvas, float cx, float cy, double lat, double lon) {
         String source = phoneSource.isEmpty() ? phoneProvider : phoneSource;
+        long age = System.currentTimeMillis() - phoneTime;
         StringBuilder first = new StringBuilder("当前定位");
+        if (phoneTracking && age <= 30_000) {
+            first.append(" · 持续定位");
+        } else if (!phoneTracking) {
+            first.append(" · 已断开");
+        } else {
+            first.append(" · 信号弱");
+        }
         if (!source.isEmpty()) {
             first.append(" · ").append(source);
         }
         if (phoneAccuracy > 0.5) {
             first.append(String.format(Locale.US, " · ±%.0fm", phoneAccuracy));
+        }
+        if (age > 30_000 && age < 86_400_000L) {
+            first.append(" · 最后更新 ").append(age / 1000).append("s 前");
         }
         long t = phoneTime > 0 ? phoneTime : System.currentTimeMillis();
         String line2 = String.format(Locale.US, "%s %.6f, %.6f · %tH:%tM:%tS",
@@ -1671,6 +1728,10 @@ public class ChinaMapView extends View {
         final int action = event.getActionMasked();
 
         if (action == MotionEvent.ACTION_DOWN) {
+            if (phoneOffscreenVisible && phoneOffscreenRect.contains(event.getX(), event.getY())) {
+                centerOnPhone();
+                return true;
+            }
             if (offscreenVisible && offscreenRect.contains(event.getX(), event.getY())) {
                 centerOnLatest();
                 clampPan();
