@@ -184,7 +184,6 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:fontFamily="monospace"
-                android:text="@string/waiting"
                 android:textColor="#263238"
                 android:textSize="12sp" />
 

@@ -2257,7 +2257,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "世界地图蓝牙轨迹  v1.3.8\n\n"
+        String msg = "世界地图蓝牙轨迹  v1.3.9\n\n"
                 + "· 悬浮球：世界/中国、中文/EN，可拖动/隐藏；更多面板分组\n"
                 + "· 世界/中国铺满屏幕；滑动时标签暂隐，不漂移\n"
                 + "· 世界最小缩放清晰化，detail 边界与标签更大\n"
@@ -2267,6 +2267,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 + "· 缩放时父瓦片立即占位，中心瓦片优先，异步写盘\n"
                 + "· 世界边缘不再重复瓦片，消除重影\n"
                 + "· 静止画面保留可见瓦片，不再周期闪烁\n"
+                + "· 移除“等待蓝牙坐标”提示\n"
                 + "· 世界地图数据抽稀 + 后台 Path，切换/缩放更流畅\n"
                 + "· 世界地图 + 中国到县级，离线；中文/English 地图标签\n"
                 + "· 中国省/市/县（GCJ-02）；世界国家/省州/城市（Natural Earth）\n"
@@ -2382,7 +2383,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 .setPositiveButton("清空", (d, w) -> {
                     TrackStore.INSTANCE.clear();
                     parser.reset();
-                    coordText.setText(R.string.waiting);
+                    coordText.setText("");
                     mapView.invalidate();
                     refreshCount();
                     addLog("轨迹已清空");

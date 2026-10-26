@@ -9,7 +9,6 @@
     <string name="follow_off">跟随：关</string>
     <string name="clear">清空</string>
     <string name="log">日志</string>
-    <string name="waiting">等待蓝牙坐标…</string>
     <string name="mode_ble">低功耗 BLE</string>
     <string name="mode_spp">经典蓝牙 SPP</string>
     <string name="mode_hint">HC-05/JDY-31/串口模块选经典蓝牙；ESP32/BLE 模块选低功耗 BLE</string>

@@ -1194,7 +1194,6 @@ public class ChinaMapView extends View {
             drawLatest(canvas);
             drawPhoneMarker(canvas);
             drawOffscreenHint(canvas);
-            drawHint(canvas);
             drawScaleBar(canvas);
             drawCompass(canvas);
             drawAttribution(canvas);
@@ -1371,7 +1370,6 @@ public class ChinaMapView extends View {
         drawLatest(canvas);
         drawPhoneMarker(canvas);
         drawOffscreenHint(canvas);
-        drawHint(canvas);
         drawScaleBar(canvas);
         drawCompass(canvas);
         drawAttribution(canvas);
@@ -2227,13 +2225,6 @@ public class ChinaMapView extends View {
     }
 
     // ------------------------------------------------------------ 其它装饰
-    private void drawHint(Canvas canvas) {
-        if (trackSynced > 0 || loadError != null) {
-            return;
-        }
-        canvas.drawText("等待蓝牙坐标…", getWidth() / 2f, getHeight() * 0.32f, pHint);
-    }
-
     private void drawScaleBar(Canvas canvas) {
         double lat = screenToLonLat(getWidth() / 2f, getHeight() / 2f)[0];
         double metersPerPx = Mercator.metersPerWorldUnit(lat) / scale;
