@@ -1107,14 +1107,21 @@ public final class BtLink {
         if (gatt == null || writeChar == null) {
             return;
         }
-        if ((writeChar.getProperties() & BluetoothGattCharacteristic.PROPERTY_READ) == 0) {
+        // 优先读“通知特征”（NB-E 的 FFF1），其次读写特征（FFE1 一体设备）。
+        BluetoothGattCharacteristic readChar = writeChar;
+        if (uartNotifyChar != null
+                && (uartNotifyChar.getProperties()
+                & BluetoothGattCharacteristic.PROPERTY_READ) != 0) {
+            readChar = uartNotifyChar;
+        }
+        if ((readChar.getProperties() & BluetoothGattCharacteristic.PROPERTY_READ) == 0) {
             return;
         }
         try {
-            boolean ok = gatt.readCharacteristic(writeChar);
-            postLog("陀螺读取 FFE1 → " + ok);
+            boolean ok = gatt.readCharacteristic(readChar);
+            postLog("读取回包特征 " + readChar.getUuid() + " → " + ok);
         } catch (SecurityException e) {
-            postLog("陀螺读取失败（权限）: " + e.getMessage());
+            postLog("读取失败（权限）: " + e.getMessage());
         }
     }
 

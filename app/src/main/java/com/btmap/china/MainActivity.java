@@ -1394,7 +1394,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "中国地图蓝牙轨迹  v1.2.4\n\n"
+        String msg = "中国地图蓝牙轨迹  v1.2.5\n\n"
                 + "· 标准底图内置到县级（GCJ-02），完全离线\n"
                 + "· 街道/卫星/卫星+路网/地形为在线瓦片，需要网络\n"
                 + "· 输入坐标系可选：GCJ-02 / WGS-84 / BD-09 / CGCS2000\n"

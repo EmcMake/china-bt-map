@@ -53,7 +53,7 @@ public final class LocationHelper {
     private final LocationManager manager;
     private LocationListener listener;
     private Runnable timeout;
-    private boolean delivered;
+    private boolean deliveredAny;
     private Fix best;
 
     public LocationHelper(Context context) {
@@ -94,7 +94,7 @@ public final class LocationHelper {
 
     private void start(long timeoutMs, Callback cb) {
         cancel();
-        delivered = false;
+        deliveredAny = false;
         best = null;
         if (manager == null) {
             cb.onError("本机没有定位服务");
@@ -111,8 +111,9 @@ public final class LocationHelper {
 
         best = bestLastKnown();
         if (best != null && System.currentTimeMillis() - best.time < 120_000) {
-            deliver(best, cb);
-            return;
+            // 先给一个“最后已知”，同时继续请求一次新定位；新 fix 到了会再回调覆盖。
+            deliveredAny = true;
+            cb.onFix(best);
         }
 
         List<String> providers = new ArrayList<>();
@@ -127,10 +128,12 @@ public final class LocationHelper {
         }
         if (providers.isEmpty()) {
             if (best != null) {
-                deliver(best, cb);
+                deliveredAny = true;
+                cb.onFix(best);
             } else {
                 cb.onError("没有可用的定位 provider（GPS/网络都关闭）");
             }
+            cleanup();
             return;
         }
 
@@ -138,7 +141,9 @@ public final class LocationHelper {
             @Override
             public void onLocationChanged(Location location) {
                 if (location != null) {
-                    deliver(new Fix(location, providerName(location.getProvider())), cb);
+                    deliveredAny = true;
+                    cb.onFix(new Fix(location, providerName(location.getProvider())));
+                    cleanup();
                 }
             }
 
@@ -166,14 +171,14 @@ public final class LocationHelper {
         }
 
         timeout = () -> {
-            if (delivered) {
-                return;
-            }
-            if (best != null) {
-                deliver(new Fix(best.lat, best.lon, best.accuracy, best.provider,
-                        best.time, "最后已知（可能较旧）"), cb);
-            } else {
-                cb.onError("定位超时：室内/GPS 信号弱，可重试或改用“最后蓝牙点”");
+            if (!deliveredAny) {
+                if (best != null) {
+                    deliveredAny = true;
+                    cb.onFix(new Fix(best.lat, best.lon, best.accuracy, best.provider,
+                            best.time, "最后已知（可能较旧）"));
+                } else {
+                    cb.onError("定位超时：室内/GPS 信号弱，可重试或改用“最后蓝牙点”");
+                }
             }
             cleanup();
         };
@@ -208,15 +213,6 @@ public final class LocationHelper {
             return "网络定位";
         }
         return provider == null ? "" : provider;
-    }
-
-    private void deliver(Fix fix, Callback cb) {
-        if (delivered) {
-            return;
-        }
-        delivered = true;
-        cleanup();
-        cb.onFix(fix);
     }
 
     public void cancel() {

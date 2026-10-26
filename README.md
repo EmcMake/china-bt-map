@@ -5,9 +5,9 @@
 标准底图完全离线；街道 / 卫星 / 卫星+路网 / 地形为在线瓦片（需要网络）。
 
 - GitHub 仓库：<https://github.com/EmcMake/china-bt-map>
-- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.4 附件为 `china-bt-map-1.2.4.apk`）
-- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.4.apk>（点 Download）
-- 安装包：`dist/china-bt-map-1.2.4.apk`（约 7 MB，已签名）
+- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.5 附件为 `china-bt-map-1.2.5.apk`）
+- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.5.apk>（点 Download）
+- 安装包：`dist/china-bt-map-1.2.5.apk`（约 7 MB，已签名）
 - 包名：`com.btmap.china`，最低 Android 7.0（API 24），targetSdk 34
 - 纯 Java + Framework API，无 AndroidX / GMS / native 依赖
 - 权限：蓝牙相关 + `INTERNET` / `ACCESS_NETWORK_STATE`（仅在线图层使用）
@@ -16,11 +16,11 @@
 
 ## 一、安装
 
-把 `dist/china-bt-map-1.2.4.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
+把 `dist/china-bt-map-1.2.5.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
 系统提示“未知来源”时允许一次即可。或用 adb：
 
 ```bash
-adb install -r dist/china-bt-map-1.2.4.apk
+adb install -r dist/china-bt-map-1.2.5.apk
 ```
 
 > 自签名证书仅用于个人侧载，不能上架应用商店。升级请用同一个 `keystore/release.jks`
@@ -126,7 +126,10 @@ App 的做法：
 - 发送内容默认 `lat,lon\r\n`（WGS-84，6 位小数），可选 `LAT=..,LON=..`、带精度、或“当前坐标系”（GCJ-02/BD-09）；
 - 预览可手动编辑；发送前自动补 `\r\n`，不会重复；
 - BLE 透传特征优先：**FFF2 写 / FFF1 通知**，其次 FFE1；诊断页会显示当前 TX/RX 特征；
-- 发送后在同一对话框显示 TX/RX hex、GB2312/文本、回包或超时。
+- 发送后在同一对话框显示 TX/RX hex、GB2312/文本、回包或超时；
+- 回包读取顺序：Notify → 读通知特征（NB-E 的 FFF1）→ 超时报告。
+
+![定位并发送](docs/screenshots/location_send_nb_e249.png)
 
 > 手机定位需要“位置”权限；室内可能只能拿到最后已知或最后蓝牙点。发送只在点“发送”时发生一次。
 
