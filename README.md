@@ -5,9 +5,9 @@
 标准底图完全离线，支持中国/世界视图与**中文/English** 地图标签；街道 / 卫星 / 卫星+路网 / 地形为在线瓦片（需要网络）。
 
 - GitHub 仓库：<https://github.com/EmcMake/china-bt-map>
-- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.9 附件为 `china-bt-map-1.2.9.apk`）
-- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.9.apk>（点 Download）
-- 安装包：`dist/china-bt-map-1.2.9.apk`（约 11 MB，已签名）
+- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.3.0 附件为 `china-bt-map-1.3.0.apk`）
+- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.3.0.apk>（点 Download）
+- 安装包：`dist/china-bt-map-1.3.0.apk`（约 9.7 MB，已签名）
 - 包名：`com.btmap.china`，最低 Android 7.0（API 24），targetSdk 34
 - 纯 Java + Framework API，无 AndroidX / GMS / native 依赖
 - 权限：蓝牙相关 + `INTERNET` / `ACCESS_NETWORK_STATE`（仅在线图层使用）
@@ -16,11 +16,11 @@
 
 ## 一、安装
 
-把 `dist/china-bt-map-1.2.9.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
+把 `dist/china-bt-map-1.3.0.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
 系统提示“未知来源”时允许一次即可。或用 adb：
 
 ```bash
-adb install -r dist/china-bt-map-1.2.9.apk
+adb install -r dist/china-bt-map-1.3.0.apk
 ```
 
 > 自签名证书仅用于个人侧载，不能上架应用商店。升级请用同一个 `keystore/release.jks`
@@ -52,22 +52,27 @@ adb install -r dist/china-bt-map-1.2.9.apk
 | --- | --- |
 | ![世界街道](docs/screenshots/world_street.png) | ![中国英文](docs/screenshots/china_en.png) |
 
-| 顶部快捷切换（世界/中国、中文/EN） | 更多面板（分组卡片） |
+| 悬浮球（收起） | 悬浮球（展开） |
 | --- | --- |
-| ![快捷切换](docs/screenshots/quick_switch.png) | ![更多面板](docs/screenshots/more_sheet.png) |
+| ![悬浮球](docs/screenshots/float_ball.png) | ![悬浮卡片](docs/screenshots/float_card.png) |
 
-### 顶部快捷切换与“更多”面板
+### 悬浮球与“更多”面板
 
-- 顶部常驻四个小按钮：
-  - **世界 / 中国**：直接切换视图；
-  - **中文 / EN**：直接切换地图标签语言；
-  - 当前项蓝底白字，切换即生效并保存；
+- 世界/中国、中文/EN 收进一个悬浮球：
+  - 球上显示当前语言 `中`/`EN`，点开是 2×2 选项；
+  - 可拖动到任意位置，位置保存；
+  - `−` 收回成球，`×` 完全隐藏；
+  - 隐藏后从“更多 → 快捷切换球”恢复；
+  - 当前选项蓝底白字，切换立即生效并保存；
 - “更多”改为圆角胶囊按钮，点开是**底部面板**：
   - 圆角卡片、分组标题、两列图标卡片；
   - 地图类型/坐标系显示当前值；
   - 日志面板显示当前显示/隐藏状态；
   - 已连接时显示红色“断开蓝牙连接”；
+  - 新增“快捷切换球：当前显示/隐藏”恢复入口；
   - 原菜单所有功能仍保留。
+
+![更多面板](docs/screenshots/more_sheet.png)
 
 ## 三、地图类型（顶部“地图：…”芯片，或 更多 → 地图类型）
 
@@ -103,6 +108,10 @@ adb install -r dist/china-bt-map-1.2.9.apk
 - 在线瓦片的文字由瓦片提供方决定，不能像离线矢量底图那样在中文/English 间切换：
   - 离线标准：中文/English 都可切；
   - Esri 在线：英文为主；高德/天地图：中文为主。
+
+世界矢量渲染优化：世界资产抽稀到约 3.9MB（detail 32 万点 / overview 6.8 万点），
+国家填充分批 Path、省州 Path 后台构建、交互时暂停密集标签；世界视图不叠加中国县界，
+切到中国视图显示完整县界/县名。
 
 世界数据来源：**Natural Earth**（public domain），国家/省州/城市均带 `NAME_EN` / `NAME_ZH`
 （省州 `name_en/name_zh`，城市 `NAME_EN/NAME_ZH`），打包成 `WRLD1` 双 LOD 资产，约 5.2MB。

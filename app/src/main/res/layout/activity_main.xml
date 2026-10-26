@@ -57,45 +57,6 @@
                 android:textColor="#1565C0"
                 android:textSize="11sp" />
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/quickWorld"
-                    style="@style/QuickSeg"
-                    android:text="世界"
-                    android:contentDescription="世界地图" />
-
-                <TextView
-                    android:id="@+id/quickChina"
-                    style="@style/QuickSeg"
-                    android:layout_marginLeft="4dp"
-                    android:text="中国"
-                    android:contentDescription="中国地图" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/quickZh"
-                    style="@style/QuickSeg"
-                    android:text="中文"
-                    android:contentDescription="中文地图标签" />
-
-                <TextView
-                    android:id="@+id/quickEn"
-                    style="@style/QuickSeg"
-                    android:layout_marginLeft="4dp"
-                    android:text="EN"
-                    android:contentDescription="English map labels" />
-            </LinearLayout>
         </LinearLayout>
 
         <Button
@@ -292,4 +253,126 @@
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
+
+
+    <!-- 世界/中国、中文/EN 悬浮切换球 -->
+    <FrameLayout
+        android:id="@+id/floatSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginLeft="12dp"
+        android:layout_marginTop="210dp">
+
+        <LinearLayout
+            android:id="@+id/floatBall"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:background="@drawable/bg_float_ball"
+            android:clickable="true"
+            android:contentDescription="地图视图与语言快捷切换"
+            android:elevation="8dp"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_globe"
+                android:tint="#FFFFFF" />
+
+            <TextView
+                android:id="@+id/floatBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="中"
+                android:textColor="#FFFFFF"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/floatCard"
+            android:layout_width="210dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_float_card"
+            android:elevation="10dp"
+            android:orientation="vertical"
+            android:padding="10dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="视图与语言"
+                    android:textColor="#263238"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/floatCollapse"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:contentDescription="收起悬浮球"
+                    android:gravity="center"
+                    android:text="−"
+                    android:textColor="#546E7A"
+                    android:textSize="18sp" />
+
+                <TextView
+                    android:id="@+id/floatHide"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:contentDescription="隐藏悬浮球"
+                    android:gravity="center"
+                    android:text="×"
+                    android:textColor="#78909C"
+                    android:textSize="18sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/floatWorld"
+                    style="@style/QuickSeg"
+                    android:text="世界" />
+
+                <TextView
+                    android:id="@+id/floatChina"
+                    style="@style/QuickSeg"
+                    android:layout_marginLeft="4dp"
+                    android:text="中国" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/floatZh"
+                    style="@style/QuickSeg"
+                    android:text="中文" />
+
+                <TextView
+                    android:id="@+id/floatEn"
+                    style="@style/QuickSeg"
+                    android:layout_marginLeft="4dp"
+                    android:text="EN" />
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
 </FrameLayout>

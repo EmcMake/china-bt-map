@@ -1,5 +1,7 @@
 package com.btmap.china.map;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -18,8 +20,11 @@ import com.btmap.china.track.TrackStore;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * 离线中国地图视图：省/市界（双 LOD）、经纬网、轨迹与定位红点。
@@ -73,6 +78,17 @@ public class ChinaMapView extends View {
     private final List<WorldDrawn> worldCountries = new ArrayList<>();
     private final List<WorldDrawn> worldAdmin1 = new ArrayList<>();
     private final List<WorldDrawn> worldPlaces = new ArrayList<>();
+    private final List<WorldDrawn> countryLabelOrder = new ArrayList<>();
+    private Path countryOverview;
+    private Path countryDetail;
+    private ExecutorService worldExecutor;
+    private boolean interacting;
+    private final Runnable endInteraction = () -> {
+        if (interacting) {
+            interacting = false;
+            invalidate();
+        }
+    };
     private DrawnFeature nineDash;
     private int viewMode = VIEW_WORLD;
     private int mapLanguage = LANG_ZH;
@@ -212,7 +228,7 @@ public class ChinaMapView extends View {
 
         pLandFill.setStyle(Paint.Style.FILL);
         pLandFill.setColor(COLOR_LAND);
-        pLandFill.setAntiAlias(true);
+        pLandFill.setAntiAlias(false);
 
         pProvBorder.setStyle(Paint.Style.STROKE);
         pProvBorder.setColor(COLOR_PROV_BORDER);
@@ -230,7 +246,7 @@ public class ChinaMapView extends View {
         pWorldBorder.setStyle(Paint.Style.STROKE);
         pWorldBorder.setColor(0xFFB9A98C);
         pWorldBorder.setStrokeJoin(Paint.Join.ROUND);
-        pWorldBorder.setAntiAlias(true);
+        pWorldBorder.setAntiAlias(false);
 
         pWorldAdminBorder.setStyle(Paint.Style.STROKE);
         pWorldAdminBorder.setColor(0xFFD8CBB2);
@@ -459,6 +475,24 @@ public class ChinaMapView extends View {
                     worldPlaces.add(d);
                 }
             }
+            countryLabelOrder.addAll(worldCountries);
+            countryLabelOrder.sort(new Comparator<WorldDrawn>() {
+                @Override
+                public int compare(WorldDrawn a, WorldDrawn b) {
+                    int r = Integer.compare(a.feature.labelRank, b.feature.labelRank);
+                    if (r != 0) {
+                        return r;
+                    }
+                    return Integer.compare(b.feature.pop, a.feature.pop);
+                }
+            });
+            countryOverview = buildCountryPath(false);
+            countryDetail = buildCountryPath(true);
+            for (WorldDrawn d : worldCountries) {
+                d.overview = buildPath(d.feature.overview);
+                d.detail = buildPath(d.feature.detail);
+            }
+            worldExecutor = Executors.newSingleThreadExecutor();
         }
         for (MapData.Feature f : data.features) {
             DrawnFeature d = new DrawnFeature(f);
@@ -500,25 +534,88 @@ public class ChinaMapView extends View {
 
     private static final class WorldDrawn {
         final WorldData.Feature feature;
-        private Path detail;
-        private Path overview;
+        volatile Path detail;
+        volatile Path overview;
+        volatile boolean detailQueued;
 
         WorldDrawn(WorldData.Feature feature) {
             this.feature = feature;
         }
 
-        synchronized Path pathFor(boolean useDetail) {
-            if (useDetail) {
-                if (detail == null) {
-                    detail = buildPath(feature.detail);
-                }
-                return detail;
-            }
-            if (overview == null) {
-                overview = buildPath(feature.overview);
-            }
-            return overview;
+        /** 只返回已构建好的 Path；构建统一放到后台，绝不在 UI 线程做大 Path。 */
+        Path pathFor(boolean useDetail) {
+            return useDetail ? detail : overview;
         }
+    }
+
+    private Path buildCountryPath(boolean detail) {
+        Path p = new Path();
+        for (WorldDrawn d : worldCountries) {
+            WorldData.RingSet set = detail ? d.feature.detail : d.feature.overview;
+            appendRings(p, set);
+        }
+        return p;
+    }
+
+    private static void appendRings(Path p, WorldData.RingSet set) {
+        if (set == null) {
+            return;
+        }
+        for (int r = 0; r < set.start.length; r++) {
+            int start = set.start[r];
+            int len = set.len[r];
+            if (len < 2) {
+                continue;
+            }
+            p.moveTo(set.xs[start], set.ys[start]);
+            for (int i = 1; i < len; i++) {
+                p.lineTo(set.xs[start + i], set.ys[start + i]);
+            }
+            p.close();
+        }
+    }
+
+    private void buildAdmin1OverviewBackground() {
+        final ExecutorService ex = worldExecutor;
+        if (ex == null) {
+            return;
+        }
+        ex.execute(() -> {
+            for (WorldDrawn d : worldAdmin1) {
+                if (d.overview == null) {
+                    d.overview = buildPath(d.feature.overview);
+                }
+            }
+            postInvalidateOnAnimation();
+        });
+    }
+
+    private void queueAdmin1Overview(final WorldDrawn d) {
+        final ExecutorService ex = worldExecutor;
+        if (ex == null || d.overview != null || d.detailQueued) {
+            return;
+        }
+        d.detailQueued = true;
+        ex.execute(() -> {
+            Path p = buildPath(d.feature.overview);
+            d.overview = p;
+            d.detailQueued = false;
+            postInvalidateOnAnimation();
+        });
+    }
+
+    private void queueAdmin1Detail(final WorldDrawn d) {
+        final ExecutorService ex = worldExecutor;
+        if (ex == null || d.detail != null || d.detailQueued) {
+            return;
+        }
+        d.detailQueued = true;
+        ex.execute(() -> {
+            Path p = buildPath(d.feature.detail);
+            d.detail = p;
+            d.detailQueued = false;
+            postInvalidateOnAnimation();
+        });
     }
 
     private static Path buildPath(WorldData.RingSet set) {
@@ -797,6 +894,8 @@ public class ChinaMapView extends View {
 
     // ------------------------------------------------------------ 视图变换
     public void fitWorld() {
+        removeCallbacks(endInteraction);
+        interacting = false;
         if (getWidth() == 0 || getHeight() == 0 || world == null) {
             fitChina();
             return;
@@ -818,6 +917,8 @@ public class ChinaMapView extends View {
     }
 
     public void fitChina() {
+        removeCallbacks(endInteraction);
+        interacting = false;
         if (getWidth() == 0 || getHeight() == 0) {
             return;
         }
@@ -848,6 +949,7 @@ public class ChinaMapView extends View {
         }
         final double startX = offsetX;
         final double startY = offsetY;
+        beginInteraction();
         zoomAnimator = ValueAnimator.ofFloat(0f, 1f);
         zoomAnimator.setDuration(180);
         zoomAnimator.addUpdateListener(a -> {
@@ -859,6 +961,12 @@ public class ChinaMapView extends View {
             offsetY = fy - (fy - startY) * k;
             clampPan();
             invalidate();
+        });
+        zoomAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                endInteractionSoon();
+            }
         });
         zoomAnimator.start();
     }
@@ -1097,13 +1205,28 @@ public class ChinaMapView extends View {
         canvas.translate((float) offsetX, (float) offsetY);
         canvas.scale(s, s);
 
-        boolean worldUseDetail = world != null && scale >= worldFitScale * 12;
-        if (world != null) {
+        boolean worldUseDetail = world != null && !interacting && scale >= worldFitScale * 60;
+        boolean batchCountries = scale < worldFitScale * 3;
+        Path countryPath = worldUseDetail ? countryDetail : countryOverview;
+        if (countryPath == null) {
+            countryPath = countryOverview;
+        }
+        if (batchCountries) {
+            if (countryPath != null) {
+                canvas.drawPath(countryPath, pLandFill);
+            }
+        } else if (world != null) {
             for (WorldDrawn d : worldCountries) {
                 if (!visible(d, wx0, wy0, wx1, wy1)) {
                     continue;
                 }
-                canvas.drawPath(d.pathFor(worldUseDetail), pLandFill);
+                Path p = d.pathFor(worldUseDetail);
+                if (p == null) {
+                    p = d.pathFor(false);
+                }
+                if (p != null) {
+                    canvas.drawPath(p, pLandFill);
+                }
             }
         }
 
@@ -1121,11 +1244,23 @@ public class ChinaMapView extends View {
 
         if (world != null) {
             pWorldBorder.setStrokeWidth(dp(0.9f) / s);
-            for (WorldDrawn d : worldCountries) {
-                if (!visible(d, wx0, wy0, wx1, wy1)) {
-                    continue;
+            if (batchCountries) {
+                if (countryPath != null) {
+                    canvas.drawPath(countryPath, pWorldBorder);
                 }
-                canvas.drawPath(d.pathFor(worldUseDetail), pWorldBorder);
+            } else {
+                for (WorldDrawn d : worldCountries) {
+                    if (!visible(d, wx0, wy0, wx1, wy1)) {
+                        continue;
+                    }
+                    Path p = d.pathFor(worldUseDetail);
+                    if (p == null) {
+                        p = d.pathFor(false);
+                    }
+                    if (p != null) {
+                        canvas.drawPath(p, pWorldBorder);
+                    }
+                }
             }
             double adminBorderThreshold = viewMode == VIEW_CHINA
                     ? fitScale * 0.8 : worldFitScale * 10;
@@ -1138,14 +1273,26 @@ public class ChinaMapView extends View {
                     if (mapLanguage == LANG_ZH && isChina(d.feature)) {
                         continue;
                     }
-                    canvas.drawPath(d.pathFor(worldUseDetail), pWorldAdminBorder);
+                    Path p = d.pathFor(worldUseDetail);
+                    if (p == null) {
+                        if (worldUseDetail) {
+                            queueAdmin1Detail(d);
+                        } else {
+                            queueAdmin1Overview(d);
+                        }
+                        p = d.pathFor(false);
+                    }
+                    if (p != null) {
+                        canvas.drawPath(p, pWorldAdminBorder);
+                    }
                 }
             }
         }
 
-        boolean cityLayer = cityVisible && scale > fitScale * 2.2;
-        boolean countyLayer = countyVisible && scale > fitScale * 4.0
-                && !counties.isEmpty();
+        boolean cityLayer = viewMode == VIEW_CHINA && cityVisible
+                && scale > fitScale * 2.2;
+        boolean countyLayer = viewMode == VIEW_CHINA && countyVisible
+                && scale > fitScale * 4.0 && !counties.isEmpty();
         if (!cityLayer && (viewMode == VIEW_CHINA || scale >= fitScale * 0.8)) {
             // 低缩放只画省界；放大后改用更细的市/县网络，
             // 避免 DataV 多套几何叠加出现“双线”
@@ -1323,10 +1470,11 @@ public class ChinaMapView extends View {
 
     private void drawLabels(Canvas canvas) {
         drawWorldLabels(canvas);
-        if (mapLanguage != LANG_ZH || scale < fitScale * 0.8) {
+        if (mapLanguage != LANG_ZH || viewMode != VIEW_CHINA
+                || scale < fitScale * 0.8) {
             return;
         }
-        if (scale > fitScale * 1.6) {
+        if (scale > fitScale * 1.6 && !interacting) {
             float r = dp(2.2f);
             for (DrawnFeature d : cities) {
                 if (!d.feature.hasCenter()) {
@@ -1359,7 +1507,7 @@ public class ChinaMapView extends View {
             canvas.drawText(label, pt[0], pt[1], pLabelHalo);
             canvas.drawText(label, pt[0], pt[1], pLabel);
         }
-        if (scale > fitScale * 3.5) {
+        if (scale > fitScale * 3.5 && !interacting) {
             pLabel.setTextSize(dp(9.5f));
             pLabelHalo.setTextSize(dp(9.5f));
             pLabel.setFakeBoldText(false);
@@ -1384,7 +1532,7 @@ public class ChinaMapView extends View {
             pLabelHalo.setFakeBoldText(true);
             pLabel.setColor(COLOR_LABEL);
         }
-        if (scale > fitScale * 8.0 && countyVisible && !counties.isEmpty()) {
+        if (scale > fitScale * 8.0 && countyVisible && !counties.isEmpty() && !interacting) {
             pLabel.setTextSize(dp(8.5f));
             pLabelHalo.setTextSize(dp(8.5f));
             pLabel.setFakeBoldText(false);
@@ -1401,7 +1549,7 @@ public class ChinaMapView extends View {
                 }
                 canvas.drawText(d.feature.name, pt[0], pt[1], pLabelHalo);
                 canvas.drawText(d.feature.name, pt[0], pt[1], pLabel);
-                if (++drawn > 200) {
+                if (++drawn > 100) {
                     break;
                 }
             }
@@ -1417,7 +1565,7 @@ public class ChinaMapView extends View {
         }
 
         // 国家名（世界视图低缩放，按等级/避让限量）
-        if (viewMode == VIEW_WORLD && scale <= worldFitScale * 14) {
+        if (viewMode == VIEW_WORLD) {
             pLabel.setTextSize(dp(10.5f));
             pLabelHalo.setTextSize(dp(10.5f));
             pLabel.setFakeBoldText(true);
@@ -1426,17 +1574,9 @@ public class ChinaMapView extends View {
             boolean low = scale <= worldFitScale * 2.2;
             int maxRank = 4;
             int cap = low ? 55 : 80;
-            List<WorldDrawn> sorted = new ArrayList<>(worldCountries);
-            sorted.sort((a, b) -> {
-                int r = Integer.compare(a.feature.labelRank, b.feature.labelRank);
-                if (r != 0) {
-                    return r;
-                }
-                return Integer.compare(b.feature.pop, a.feature.pop);
-            });
             List<RectF> boxes = new ArrayList<>();
             int drawn = 0;
-            for (WorldDrawn d : sorted) {
+            for (WorldDrawn d : countryLabelOrder) {
                 WorldData.Feature f = d.feature;
                 if (!f.hasCenter() || f.labelRank > maxRank) {
                     continue;
@@ -1495,7 +1635,7 @@ public class ChinaMapView extends View {
         // 省/州名
         double adminLabelThreshold = viewMode == VIEW_CHINA
                 ? fitScale * 0.8 : worldFitScale * 10;
-        if (scale >= adminLabelThreshold
+        if (scale >= adminLabelThreshold && !interacting
                 && !(viewMode == VIEW_CHINA && mapLanguage == LANG_ZH)) {
             pLabel.setTextSize(dp(9.5f));
             pLabelHalo.setTextSize(dp(9.5f));
@@ -1539,7 +1679,7 @@ public class ChinaMapView extends View {
                 boxes.add(box);
                 canvas.drawText(label, pt[0], pt[1], pLabelHalo);
                 canvas.drawText(label, pt[0], pt[1], pLabel);
-                if (++drawn > 150) {
+                if (++drawn > 80) {
                     break;
                 }
             }
@@ -1547,8 +1687,8 @@ public class ChinaMapView extends View {
 
         // 城市名
         double placeThreshold = viewMode == VIEW_CHINA
-                ? fitScale * 3.5 : worldFitScale * 18;
-        if (scale >= placeThreshold
+                ? fitScale * 3.5 : worldFitScale * 40;
+        if (scale >= placeThreshold && !interacting
                 && !(viewMode == VIEW_CHINA && mapLanguage == LANG_ZH)) {
             pLabel.setTextSize(dp(8.5f));
             pLabelHalo.setTextSize(dp(8.5f));
@@ -1576,7 +1716,7 @@ public class ChinaMapView extends View {
                 String label = f.label(mapLanguage);
                 canvas.drawText(label, pt[0], pt[1] - dp(5f), pLabelHalo);
                 canvas.drawText(label, pt[0], pt[1] - dp(5f), pLabel);
-                if (++drawn > 200) {
+                if (++drawn > 100) {
                     break;
                 }
             }
@@ -1585,7 +1725,7 @@ public class ChinaMapView extends View {
 
     /** 是否落在可视地图区域（避开顶部/底部悬浮控件与南海小图）。 */
     private boolean showInset() {
-        return viewMode == VIEW_CHINA || scale >= fitScale * 0.8;
+        return viewMode == VIEW_CHINA;
     }
 
     private boolean inMapArea(float x, float y, float margin) {
@@ -2129,6 +2269,16 @@ public class ChinaMapView extends View {
     }
 
     // ------------------------------------------------------------ 触摸
+    private void beginInteraction() {
+        removeCallbacks(endInteraction);
+        interacting = true;
+    }
+
+    private void endInteractionSoon() {
+        removeCallbacks(endInteraction);
+        postDelayed(endInteraction, 180);
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         final int action = event.getActionMasked();
@@ -2145,6 +2295,7 @@ public class ChinaMapView extends View {
                 return true;
             }
             cancelZoomAnimation();
+            beginInteraction();
             tapDownTime = SystemClock.uptimeMillis();
             tapDownX = event.getX();
             tapDownY = event.getY();
@@ -2155,6 +2306,7 @@ public class ChinaMapView extends View {
         }
 
         if (action == MotionEvent.ACTION_MOVE && event.getPointerCount() == 1) {
+            beginInteraction();
             if (Math.hypot(event.getX() - tapDownX, event.getY() - tapDownY) > touchSlop) {
                 tapMoved = true;
             }
@@ -2176,6 +2328,7 @@ public class ChinaMapView extends View {
         }
 
         if (action == MotionEvent.ACTION_POINTER_DOWN && event.getPointerCount() == 2) {
+            beginInteraction();
             pinching = true;
             tapMoved = true;
             lastTapUpTime = 0;
@@ -2204,12 +2357,14 @@ public class ChinaMapView extends View {
                 invalidate();
             } else if (action == MotionEvent.ACTION_POINTER_UP) {
                 pinching = false;
+                endInteractionSoon();
             }
             return true;
         }
 
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
             pinching = false;
+            endInteractionSoon();
         }
 
         if (!pinching && event.getPointerCount() == 1) {
@@ -2225,6 +2380,15 @@ public class ChinaMapView extends View {
         float dx = e.getX(0) - e.getX(1);
         float dy = e.getY(0) - e.getY(1);
         return (float) Math.hypot(dx, dy);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        if (worldExecutor != null) {
+            worldExecutor.shutdownNow();
+        }
+        removeCallbacks(endInteraction);
+        super.onDetachedFromWindow();
     }
 
     @Override

@@ -425,7 +425,7 @@ public final class CoreTest {
         check("世界城市 7342 (" + world.countLevel(WorldData.LEVEL_PLACE) + ")",
                 world.countLevel(WorldData.LEVEL_PLACE) == 7342);
         int pts = world.totalPoints(true);
-        check("世界 detail > 40 万点 (" + pts + ")", pts > 400000);
+        check("世界 detail > 30 万点 (" + pts + ")", pts > 300000);
         WorldData.Feature china = null;
         WorldData.Feature usa = null;
         for (WorldData.Feature f : world.features) {

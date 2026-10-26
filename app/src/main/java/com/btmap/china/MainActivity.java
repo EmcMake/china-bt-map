@@ -23,6 +23,7 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,6 +34,7 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -81,10 +83,21 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private TextView countText;
     private TextView datumChip;
     private TextView mapChip;
-    private TextView quickWorld;
-    private TextView quickChina;
-    private TextView quickZh;
-    private TextView quickEn;
+    private FrameLayout floatSwitch;
+    private View floatBall;
+    private View floatCard;
+    private TextView floatBadge;
+    private TextView floatWorld;
+    private TextView floatChina;
+    private TextView floatZh;
+    private TextView floatEn;
+    private boolean floatHidden;
+    private boolean floatExpanded;
+    private float floatDownRawX;
+    private float floatDownRawY;
+    private float floatStartX;
+    private float floatStartY;
+    private boolean floatDragging;
     private TextView logText;
     private ScrollView logPanel;
     private Button btnConnect;
@@ -181,10 +194,14 @@ public class MainActivity extends Activity implements BtLink.Callback {
         countText = findViewById(R.id.countText);
         datumChip = findViewById(R.id.datumChip);
         mapChip = findViewById(R.id.mapChip);
-        quickWorld = findViewById(R.id.quickWorld);
-        quickChina = findViewById(R.id.quickChina);
-        quickZh = findViewById(R.id.quickZh);
-        quickEn = findViewById(R.id.quickEn);
+        floatSwitch = findViewById(R.id.floatSwitch);
+        floatBall = findViewById(R.id.floatBall);
+        floatCard = findViewById(R.id.floatCard);
+        floatBadge = findViewById(R.id.floatBadge);
+        floatWorld = findViewById(R.id.floatWorld);
+        floatChina = findViewById(R.id.floatChina);
+        floatZh = findViewById(R.id.floatZh);
+        floatEn = findViewById(R.id.floatEn);
         logPanel = findViewById(R.id.logPanel);
         logText = findViewById(R.id.logText);
         btnConnect = findViewById(R.id.btnConnect);
@@ -208,10 +225,15 @@ public class MainActivity extends Activity implements BtLink.Callback {
 
         btnConnect.setOnClickListener(v -> requestConnect());
         btnMore.setOnClickListener(v -> showMoreMenu());
-        quickWorld.setOnClickListener(v -> selectViewMode(ChinaMapView.VIEW_WORLD));
-        quickChina.setOnClickListener(v -> selectViewMode(ChinaMapView.VIEW_CHINA));
-        quickZh.setOnClickListener(v -> selectMapLanguage(ChinaMapView.LANG_ZH));
-        quickEn.setOnClickListener(v -> selectMapLanguage(ChinaMapView.LANG_EN));
+        floatWorld.setOnClickListener(v -> selectViewMode(ChinaMapView.VIEW_WORLD));
+        floatChina.setOnClickListener(v -> selectViewMode(ChinaMapView.VIEW_CHINA));
+        floatZh.setOnClickListener(v -> selectMapLanguage(ChinaMapView.LANG_ZH));
+        floatEn.setOnClickListener(v -> selectMapLanguage(ChinaMapView.LANG_EN));
+        findViewById(R.id.floatCollapse).setOnClickListener(v -> collapseFloat());
+        findViewById(R.id.floatHide).setOnClickListener(v -> hideFloat());
+        bindFloatDrag(floatBall, true);
+        bindFloatDrag(floatCard, false);
+        setupFloatSwitch();
         datumChip.setOnClickListener(v -> showDatumDialog());
         mapChip.setOnClickListener(v -> showMapTypeDialog());
         findViewById(R.id.btnZoomIn).setOnClickListener(v -> mapView.zoomBy(1.8));
@@ -231,7 +253,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         TrackStore.INSTANCE.addListener(trackListener);
         updateFollowButton();
         updateDatumChip();
-        updateQuickSwitch();
+        updateFloatSwitch();
         refreshCount();
         if (TrackStore.INSTANCE.size() > 0) {
             double[] last = TrackStore.INSTANCE.lastLatLon();
@@ -784,6 +806,11 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 "T01 / DEL ALL", false, false,
                 this::showSpinnerDialog), dialog);
 
+        addMoreSection(content, "界面");
+        addMoreFull(content, new MoreItem(R.drawable.ic_globe, "快捷切换球",
+                floatHidden ? "当前隐藏" : "当前显示", !floatHidden, false,
+                this::toggleFloatVisibility), dialog);
+
         if (connected) {
             addMoreSection(content, "连接");
             addMoreFull(content, new MoreItem(R.drawable.ic_power, "断开蓝牙连接",
@@ -952,7 +979,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         mapView.setViewMode(mode);
         updateTitle();
         applyMapType(false);
-        updateQuickSwitch();
+        updateFloatSwitch();
         toast(mode == ChinaMapView.VIEW_WORLD ? "世界视图" : "中国视图");
     }
 
@@ -964,15 +991,156 @@ public class MainActivity extends Activity implements BtLink.Callback {
         prefs.edit().putInt("mapLanguage", lang).apply();
         mapView.setMapLanguage(lang);
         updateMapChip();
-        updateQuickSwitch();
+        updateFloatSwitch();
         toast(lang == ChinaMapView.LANG_ZH ? "地图：中文" : "Map: English");
     }
 
-    private void updateQuickSwitch() {
-        styleQuick(quickWorld, viewMode == ChinaMapView.VIEW_WORLD);
-        styleQuick(quickChina, viewMode == ChinaMapView.VIEW_CHINA);
-        styleQuick(quickZh, mapLanguage == ChinaMapView.LANG_ZH);
-        styleQuick(quickEn, mapLanguage == ChinaMapView.LANG_EN);
+    private void setupFloatSwitch() {
+        floatHidden = prefs.getBoolean("floatHidden", false);
+        floatSwitch.post(() -> {
+            if (floatHidden) {
+                floatSwitch.setVisibility(View.GONE);
+                return;
+            }
+            floatSwitch.setVisibility(View.VISIBLE);
+            float x = prefs.getFloat("floatX", -1f);
+            float y = prefs.getFloat("floatY", -1f);
+            if (x < 0 || y < 0) {
+                x = dp(12);
+                y = findViewById(R.id.topBar).getBottom() + dp(16);
+            }
+            floatSwitch.setX(x);
+            floatSwitch.setY(y);
+            floatCard.setVisibility(View.GONE);
+            floatBall.setVisibility(View.VISIBLE);
+            floatExpanded = false;
+            clampFloat();
+            updateFloatSwitch();
+        });
+    }
+
+    private void updateFloatSwitch() {
+        styleQuick(floatWorld, viewMode == ChinaMapView.VIEW_WORLD);
+        styleQuick(floatChina, viewMode == ChinaMapView.VIEW_CHINA);
+        styleQuick(floatZh, mapLanguage == ChinaMapView.LANG_ZH);
+        styleQuick(floatEn, mapLanguage == ChinaMapView.LANG_EN);
+        if (floatBadge != null) {
+            floatBadge.setText(mapLanguage == ChinaMapView.LANG_ZH ? "中" : "EN");
+        }
+        if (floatBall != null) {
+            floatBall.setContentDescription("地图快捷切换："
+                    + (viewMode == ChinaMapView.VIEW_WORLD ? "世界" : "中国")
+                    + " · " + (mapLanguage == ChinaMapView.LANG_ZH ? "中文" : "English"));
+        }
+    }
+
+    private void expandFloat() {
+        if (floatHidden) {
+            return;
+        }
+        floatExpanded = true;
+        floatBall.setVisibility(View.GONE);
+        floatCard.setVisibility(View.VISIBLE);
+        floatCard.setAlpha(0f);
+        floatCard.animate().alpha(1f).setDuration(120).start();
+        floatSwitch.post(this::clampFloat);
+    }
+
+    private void collapseFloat() {
+        floatExpanded = false;
+        floatCard.setVisibility(View.GONE);
+        floatBall.setVisibility(View.VISIBLE);
+        floatSwitch.post(this::clampFloat);
+    }
+
+    private void hideFloat() {
+        floatHidden = true;
+        prefs.edit().putBoolean("floatHidden", true).apply();
+        floatSwitch.setVisibility(View.GONE);
+        toast("快捷球已隐藏，可在“更多”中恢复");
+    }
+
+    private void showFloat() {
+        floatHidden = false;
+        prefs.edit().putBoolean("floatHidden", false).apply();
+        floatSwitch.setVisibility(View.VISIBLE);
+        floatSwitch.setAlpha(1f);
+        collapseFloat();
+        if (floatSwitch.getX() <= 0 && floatSwitch.getY() <= 0) {
+            floatSwitch.setX(dp(12));
+            floatSwitch.setY(findViewById(R.id.topBar).getBottom() + dp(16));
+        }
+        clampFloat();
+        updateFloatSwitch();
+    }
+
+    private void toggleFloatVisibility() {
+        if (floatHidden) {
+            showFloat();
+            toast("快捷球已显示");
+        } else {
+            hideFloat();
+        }
+    }
+
+    private void bindFloatDrag(View v, boolean tapToExpand) {
+        v.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    floatDownRawX = event.getRawX();
+                    floatDownRawY = event.getRawY();
+                    floatStartX = floatSwitch.getX();
+                    floatStartY = floatSwitch.getY();
+                    floatDragging = false;
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    float dx = event.getRawX() - floatDownRawX;
+                    float dy = event.getRawY() - floatDownRawY;
+                    if (!floatDragging && Math.hypot(dx, dy) > dp(6)) {
+                        floatDragging = true;
+                    }
+                    if (floatDragging) {
+                        floatSwitch.setX(floatStartX + dx);
+                        floatSwitch.setY(floatStartY + dy);
+                        clampFloat();
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    if (floatDragging) {
+                        clampFloat();
+                        prefs.edit().putFloat("floatX", floatSwitch.getX())
+                                .putFloat("floatY", floatSwitch.getY()).apply();
+                    } else if (tapToExpand) {
+                        expandFloat();
+                    }
+                    floatDragging = false;
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    floatDragging = false;
+                    return true;
+                default:
+                    return false;
+            }
+        });
+    }
+
+    private void clampFloat() {
+        if (floatSwitch == null || floatSwitch.getWidth() == 0
+                || mapView == null || mapView.getWidth() == 0) {
+            return;
+        }
+        float w = floatSwitch.getWidth();
+        float h = floatSwitch.getHeight();
+        View top = findViewById(R.id.topBar);
+        View bottom = findViewById(R.id.bottomBar);
+        float minX = dp(8);
+        float maxX = Math.max(minX, mapView.getWidth() - w - dp(8));
+        float minY = Math.max(dp(8), top.getBottom() + dp(8));
+        float maxY = Math.max(minY, bottom.getTop() - h - dp(8));
+        float nx = Math.max(minX, Math.min(maxX, floatSwitch.getX()));
+        float ny = Math.max(minY, Math.min(maxY, floatSwitch.getY()));
+        floatSwitch.setX(nx);
+        floatSwitch.setY(ny);
     }
 
     private static void styleQuick(TextView v, boolean selected) {
@@ -2088,8 +2256,9 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "世界地图蓝牙轨迹  v1.2.9\n\n"
-                + "· 顶部快捷：世界/中国、中文/EN；更多面板分组操作\n"
+        String msg = "世界地图蓝牙轨迹  v1.3.0\n\n"
+                + "· 悬浮球：世界/中国、中文/EN，可拖动/隐藏；更多面板分组\n"
+                + "· 世界地图数据抽稀 + 后台 Path，切换/缩放更流畅\n"
                 + "· 世界地图 + 中国到县级，离线；中文/English 地图标签\n"
                 + "· 中国省/市/县（GCJ-02）；世界国家/省州/城市（Natural Earth）\n"
                 + "· 街道/卫星/卫星+路网/地形为在线瓦片，需要网络\n"
