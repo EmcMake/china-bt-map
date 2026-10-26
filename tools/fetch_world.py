@@ -17,7 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCE = os.path.join(ROOT, "tools", "world_source")
 
 LAYERS = [
-    ("50m_cultural", "ne_50m_admin_0_countries"),
+    ("10m_cultural", "ne_10m_admin_0_countries"),
     ("10m_cultural", "ne_10m_admin_1_states_provinces"),
     ("10m_cultural", "ne_10m_populated_places"),
 ]

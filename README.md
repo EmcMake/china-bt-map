@@ -5,9 +5,9 @@
 标准底图完全离线，支持中国/世界视图与**中文/English** 地图标签；街道 / 卫星 / 卫星+路网 / 地形为在线瓦片（需要网络）。
 
 - GitHub 仓库：<https://github.com/EmcMake/china-bt-map>
-- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.3.4 附件为 `china-bt-map-1.3.4.apk`）
-- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.3.4.apk>（点 Download）
-- 安装包：`dist/china-bt-map-1.3.4.apk`（约 11 MB，已签名）
+- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.3.5 附件为 `china-bt-map-1.3.5.apk`）
+- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.3.5.apk>（点 Download）
+- 安装包：`dist/china-bt-map-1.3.5.apk`（约 11 MB，已签名）
 - 包名：`com.btmap.china`，最低 Android 7.0（API 24），targetSdk 34
 - 纯 Java + Framework API，无 AndroidX / GMS / native 依赖
 - 权限：蓝牙相关 + `INTERNET` / `ACCESS_NETWORK_STATE`（仅在线图层使用）
@@ -16,11 +16,11 @@
 
 ## 一、安装
 
-把 `dist/china-bt-map-1.3.4.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
+把 `dist/china-bt-map-1.3.5.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
 系统提示“未知来源”时允许一次即可。或用 adb：
 
 ```bash
-adb install -r dist/china-bt-map-1.3.4.apk
+adb install -r dist/china-bt-map-1.3.5.apk
 ```
 
 > 自签名证书仅用于个人侧载，不能上架应用商店。升级请用同一个 `keystore/release.jks`
@@ -117,7 +117,7 @@ adb install -r dist/china-bt-map-1.3.4.apk
 
 世界信息：国家/省州/城市 + 首都标记；铺满显示省州边界/省州名/主要城市，最小世界显示首都/大城市；境外在线瓦片回退 Esri。
 
-世界矢量渲染：世界资产约 5.3MB（detail 46 万点 / overview 11 万点），最小缩放使用 0.05° overview，铺满/放大用 0.01° detail，
+世界矢量渲染：世界资产约 12MB（10m 国家、detail 约 100 万点 / overview 11 万点），最小缩放使用 0.05° overview，铺满/放大用 0.01° detail，
 国家填充分批 Path、省州 Path 后台构建、交互时暂停密集标签；世界视图不叠加中国县界，
 切到中国视图显示完整县界/县名。
 

@@ -61,8 +61,8 @@ public class ChinaMapView extends View {
     private static final double FIT_LAT_MAX = 54.0;
 
     /** 约 10 米/像素。 */
-    private static final double MAX_WORLD_PX = 8_000_000;   // 矢量约 5m/px
-    private static final double MAX_RASTER_PX = 256.0 * (1 << 17); // z17，约 1m/px
+    private static final double MAX_WORLD_PX = 32_000_000;  // 矢量约 1.25m/px
+    private static final double MAX_RASTER_PX = 256.0 * (1 << 19); // z19，约 0.3m/px
 
     private static final long PULSE_MS = 1800;
 
@@ -774,7 +774,7 @@ public class ChinaMapView extends View {
             return;
         }
         maxScale = rasterMode ? rasterMaxScale
-                : Math.min(fitScale * 1500, MAX_WORLD_PX);
+                : Math.min(fitScale * 12000, MAX_WORLD_PX);
         if (scale > maxScale) {
             scale = maxScale;
             clampPan();

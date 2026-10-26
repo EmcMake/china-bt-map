@@ -27,16 +27,16 @@ def source_dir(name, fallback):
 
 
 COUNTRY_DIR = os.environ.get("NE_COUNTRY_DIR",
-                             source_dir("ne_50m_admin_0_countries", "/tmp/ne0_50"))
+                             source_dir("ne_10m_admin_0_countries", "/tmp/ne0_10"))
 ADMIN1_DIR = os.environ.get("NE_ADMIN1_DIR",
                             source_dir("ne_10m_admin_1_states_provinces", "/tmp/ne1"))
 PLACES_DIR = os.environ.get("NE_PLACES_DIR",
                             source_dir("ne_10m_populated_places", "/tmp/nep"))
 
 MAGIC = b"WRLD1"
-COUNTRY_DETAIL_EPS = 0.01
+COUNTRY_DETAIL_EPS = 0.002
 COUNTRY_OVERVIEW_EPS = 0.05
-ADMIN1_DETAIL_EPS = 0.01
+ADMIN1_DETAIL_EPS = 0.002
 ADMIN1_OVERVIEW_EPS = 0.10
 
 

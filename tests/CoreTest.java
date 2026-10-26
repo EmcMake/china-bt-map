@@ -381,6 +381,10 @@ public final class CoreTest {
     }
 
     private static void testTileMath() {
+        TileSource osm = TileSource.forRaster(TileSource.TYPE_STREET,
+                TileSource.PROVIDER_OSM, "");
+        check("OSM 街道 z19", osm.maxZoom == 19
+                && osm.url(19, 1, 2, "").contains("tile.openstreetmap.org"));
         check("z17 层级", TileMath.zoomForScale(256.0 * (1 << 17), 0, 19) == 17);
         check("层级上限", TileMath.zoomForScale(1e12, 0, 19) == 19);
         check("层级下限", TileMath.zoomForScale(1, 3, 19) == 3);
@@ -418,8 +422,8 @@ public final class CoreTest {
 
     private static void testWorldData(String root) throws Exception {
         WorldData world = WorldData.loadFile(root + "/app/src/main/assets/world_map.bin");
-        check("世界国家 242 (" + world.countLevel(WorldData.LEVEL_COUNTRY) + ")",
-                world.countLevel(WorldData.LEVEL_COUNTRY) == 242);
+        check("世界国家 258 (" + world.countLevel(WorldData.LEVEL_COUNTRY) + ")",
+                world.countLevel(WorldData.LEVEL_COUNTRY) == 258);
         check("世界省州 4596 (" + world.countLevel(WorldData.LEVEL_ADMIN1) + ")",
                 world.countLevel(WorldData.LEVEL_ADMIN1) == 4596);
         check("世界城市 7342 (" + world.countLevel(WorldData.LEVEL_PLACE) + ")",

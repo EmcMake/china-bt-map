@@ -46,9 +46,9 @@ GEO = os.path.join(ROOT, "tools", "geojson")
 ASSET = os.path.join(ROOT, "app", "src", "main", "assets", "china_map.bin")
 PREVIEW = os.path.join(ROOT, "docs", "preview", "china_map.png")
 
-DETAIL_EPS = 0.0002      # 度，约 20m：基本保留全部源顶点
+DETAIL_EPS = 0.00005      # 度，约 20m：基本保留全部源顶点
 OVERVIEW_EPS = 0.010     # 度，约 1km：低缩放用
-COUNTY_DETAIL_EPS = 0.0002
+COUNTY_DETAIL_EPS = 0.00005
 COUNTY_OVERVIEW_EPS = 0.005
 JD_DETAIL_EPS = 0.0005
 JD_OVERVIEW_EPS = 0.002

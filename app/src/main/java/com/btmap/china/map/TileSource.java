@@ -18,6 +18,7 @@ public final class TileSource {
     public static final int PROVIDER_AMAP = 0;
     public static final int PROVIDER_ESRI = 1;
     public static final int PROVIDER_TIANDITU = 2;
+    public static final int PROVIDER_OSM = 3;
 
     public static final int DATUM_GCJ02 = 0;
     public static final int DATUM_WGS84 = 1;
@@ -31,6 +32,7 @@ public final class TileSource {
     public static final String ATTR_ESRI_TOPO =
             "Esri, HERE, Garmin, FAO, NOAA, USGS";
     public static final String ATTR_TIANDITU = "© 天地图";
+    public static final String ATTR_OSM = "© OpenStreetMap contributors";
 
     public final int type;
     public final int provider;
@@ -90,6 +92,8 @@ public final class TileSource {
                 return "天地图";
             case PROVIDER_ESRI:
                 return "Esri";
+            case PROVIDER_OSM:
+                return "OSM";
             default:
                 return "高德";
         }
@@ -154,6 +158,16 @@ public final class TileSource {
                     + "&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk={key}";
             return new TileSource(type, PROVIDER_TIANDITU, DATUM_WGS84, name, url,
                     ATTR_TIANDITU, 1, 18, true);
+        }
+
+        if (provider == PROVIDER_OSM) {
+            if (type == TYPE_STREET) {
+                return new TileSource(type, PROVIDER_OSM, DATUM_WGS84,
+                        "街道（OSM）",
+                        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                        ATTR_OSM, 0, 19, true);
+            }
+            provider = PROVIDER_ESRI;
         }
 
         if (provider == PROVIDER_AMAP && type != TYPE_TERRAIN) {

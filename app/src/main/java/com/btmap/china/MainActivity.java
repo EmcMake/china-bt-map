@@ -1232,13 +1232,18 @@ public class MainActivity extends Activity implements BtLink.Callback {
         tdt.setText("天地图（需要免费 tk，官方合规）");
         tdt.setId(1002);
         RadioButton esri = new RadioButton(this);
-        esri.setText("Esri（免 key，国内道路只到低缩放）");
+        esri.setText("Esri（免 key，街道只到低缩放）");
         esri.setId(1003);
+        RadioButton osm = new RadioButton(this);
+        osm.setText("OSM 街道（全球高精度，z19）");
+        osm.setId(1004);
         group.addView(amap);
         group.addView(tdt);
         group.addView(esri);
+        group.addView(osm);
         int checkedId = tileProvider == TileSource.PROVIDER_TIANDITU ? 1002
-                : tileProvider == TileSource.PROVIDER_ESRI ? 1003 : 1001;
+                : tileProvider == TileSource.PROVIDER_ESRI ? 1003
+                : tileProvider == TileSource.PROVIDER_OSM ? 1004 : 1001;
         group.check(checkedId);
         box.addView(group);
 
@@ -1262,6 +1267,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
                     int checked = group.getCheckedRadioButtonId();
                     tileProvider = checked == 1002 ? TileSource.PROVIDER_TIANDITU
                             : checked == 1003 ? TileSource.PROVIDER_ESRI
+                            : checked == 1004 ? TileSource.PROVIDER_OSM
                             : TileSource.PROVIDER_AMAP;
                     tdtKey = key.getText().toString().trim();
                     prefs.edit()
@@ -2251,12 +2257,13 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "世界地图蓝牙轨迹  v1.3.4\n\n"
+        String msg = "世界地图蓝牙轨迹  v1.3.5\n\n"
                 + "· 悬浮球：世界/中国、中文/EN，可拖动/隐藏；更多面板分组\n"
                 + "· 世界/中国铺满屏幕；滑动时标签暂隐，不漂移\n"
                 + "· 世界最小缩放清晰化，detail 边界与标签更大\n"
                 + "· 其他国家显示省州/城市信息，最小显示首都\n"
                 + "· 修复在线瓦片每帧上限导致的右侧空白\n"
+                + "· 世界 10m 边界 + 更深缩放；可选 OSM 全球街道\n"
                 + "· 世界地图数据抽稀 + 后台 Path，切换/缩放更流畅\n"
                 + "· 世界地图 + 中国到县级，离线；中文/English 地图标签\n"
                 + "· 中国省/市/县（GCJ-02）；世界国家/省州/城市（Natural Earth）\n"

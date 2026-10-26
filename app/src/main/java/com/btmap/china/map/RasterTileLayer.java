@@ -195,7 +195,7 @@ public final class RasterTileLayer {
                     conn = (HttpURLConnection) new URL(url).openConnection();
                     conn.setConnectTimeout(8000);
                     conn.setReadTimeout(8000);
-                    conn.setRequestProperty("User-Agent", "ChinaBtMap/1.2 (Android)");
+                    conn.setRequestProperty("User-Agent", "ChinaBtMap/1.3.5 (Android; personal map test)");
                     conn.setInstanceFollowRedirects(true);
                     int code = conn.getResponseCode();
                     if (code == 200) {
