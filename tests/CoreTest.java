@@ -1,4 +1,5 @@
 import com.btmap.china.map.MapData;
+import com.btmap.china.map.WorldData;
 import com.btmap.china.bt.SpinnerProtocol;
 import com.btmap.china.track.LocationPayload;
 import com.btmap.china.track.LocationProtocol;
@@ -34,6 +35,7 @@ public final class CoreTest {
         testRedatum();
         testZoomPrecision();
         testMapData(root);
+        testWorldData(root);
         testTileMath();
         testWgsConversion();
         testSpinnerProtocol();
@@ -412,6 +414,35 @@ public final class CoreTest {
         double[] bd = CoordSystems.toWgs84(CoordSystems.BD09, 39.9042, 116.4074);
         double db = Mercator.distanceMeters(39.9042, 116.4074, bd[0], bd[1]);
         check("BD->WGS 有偏移 (" + Math.round(db) + "m)", db > 50);
+    }
+
+    private static void testWorldData(String root) throws Exception {
+        WorldData world = WorldData.loadFile(root + "/app/src/main/assets/world_map.bin");
+        check("世界国家 242 (" + world.countLevel(WorldData.LEVEL_COUNTRY) + ")",
+                world.countLevel(WorldData.LEVEL_COUNTRY) == 242);
+        check("世界省州 4596 (" + world.countLevel(WorldData.LEVEL_ADMIN1) + ")",
+                world.countLevel(WorldData.LEVEL_ADMIN1) == 4596);
+        check("世界城市 7342 (" + world.countLevel(WorldData.LEVEL_PLACE) + ")",
+                world.countLevel(WorldData.LEVEL_PLACE) == 7342);
+        int pts = world.totalPoints(true);
+        check("世界 detail > 40 万点 (" + pts + ")", pts > 400000);
+        WorldData.Feature china = null;
+        WorldData.Feature usa = null;
+        for (WorldData.Feature f : world.features) {
+            if (f.level == WorldData.LEVEL_COUNTRY && "China".equals(f.nameEn)) {
+                china = f;
+            }
+            if (f.level == WorldData.LEVEL_COUNTRY && "United States of America".equals(f.nameEn)) {
+                usa = f;
+            }
+        }
+        check("找到 China 国名", china != null);
+        check("中国中文名含 中国", china != null && china.nameZh.contains("中华"));
+        check("中国 parent=China", china != null && "China".equals(china.parent));
+        check("China 英文标签", china != null && "China".equals(china.label(WorldData.LANG_EN)));
+        check("USA 英文标签", usa != null && usa.label(WorldData.LANG_EN).startsWith("United States"));
+        check("国家有 detail 环", china != null && china.detail.start.length > 0);
+        check("世界 bbox 覆盖全球", world.minX <= 0.0001f && world.maxX >= 0.9999f);
     }
 
     private static void testMapData(String root) throws Exception {

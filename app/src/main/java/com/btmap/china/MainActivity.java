@@ -67,6 +67,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
     };
 
     private ChinaMapView mapView;
+    private TextView titleText;
     private TextView statusText;
     private TextView coordText;
     private TextView countText;
@@ -86,6 +87,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private int mode = BtLink.MODE_BLE;
     private int datum = CoordSystems.DEFAULT;
     private int mapType = TileSource.TYPE_VECTOR;
+    private int viewMode = ChinaMapView.VIEW_WORLD;
+    private int mapLanguage = ChinaMapView.LANG_ZH;
     private int tileProvider = TileSource.PROVIDER_ESRI;
     private String tdtKey = "";
 
@@ -136,6 +139,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
         datum = prefs.getInt("datum", CoordSystems.DEFAULT);
         mode = prefs.getInt("mode", BtLink.MODE_BLE);
         mapType = prefs.getInt("mapType", TileSource.TYPE_VECTOR);
+        viewMode = prefs.getInt("viewMode", ChinaMapView.VIEW_WORLD);
+        mapLanguage = prefs.getInt("mapLanguage", ChinaMapView.LANG_ZH);
         tileProvider = prefs.getInt("tileProvider", TileSource.PROVIDER_AMAP);
         tdtKey = prefs.getString("tdtKey", "");
         protocolPreset = prefs.getInt("protocolPreset", 0);
@@ -155,6 +160,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         continuousLocation = prefs.getBoolean("continuousLocation", true);
 
         mapView = findViewById(R.id.map);
+        titleText = findViewById(R.id.title);
         locationHelper = new LocationHelper(this);
         locationHelper.addListener(locationListener);
         restorePhoneLocation();
@@ -176,6 +182,9 @@ public class MainActivity extends Activity implements BtLink.Callback {
                         ? "已到在线瓦片最大缩放（约 1 米/像素）"
                         : "已到矢量底图精度上限（约 5 米/像素）"));
         mapView.setCountyVisible(showCounty);
+        mapView.setViewMode(viewMode);
+        mapView.setMapLanguage(mapLanguage);
+        updateTitle();
         applyDisplaySettings();
         applyMapType(false);
 
@@ -190,7 +199,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         findViewById(R.id.btnFit).setOnClickListener(v -> {
             mapView.setFollow(false);
             updateFollowButton();
-            mapView.fitChina();
+            mapView.fitForView();
         });
         btnFollow.setOnClickListener(v -> {
             mapView.setFollow(!mapView.isFollow());
@@ -686,6 +695,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private void showMoreMenu() {
         final List<String> items = new ArrayList<>();
         items.add("地图类型：" + TileSource.typeName(mapType));
+        items.add("视图：" + (viewMode == ChinaMapView.VIEW_WORLD ? "世界" : "中国"));
+        items.add("地图语言：" + (mapLanguage == ChinaMapView.LANG_ZH ? "中文" : "English"));
         items.add("地图设置（在线源 / 天地图 tk / 清缓存）");
         items.add("坐标系：" + CoordSystems.chipLabel(datum));
         items.add("演示数据（画一条示例轨迹）");
@@ -708,6 +719,21 @@ public class MainActivity extends Activity implements BtLink.Callback {
                     String label = labels[which];
                     if (label.startsWith("地图类型")) {
                         showMapTypeDialog();
+                    } else if (label.startsWith("视图")) {
+                        viewMode = viewMode == ChinaMapView.VIEW_WORLD
+                                ? ChinaMapView.VIEW_CHINA : ChinaMapView.VIEW_WORLD;
+                        prefs.edit().putInt("viewMode", viewMode).apply();
+                        mapView.setViewMode(viewMode);
+                        updateTitle();
+                        applyMapType(false);
+                        toast(viewMode == ChinaMapView.VIEW_WORLD ? "世界视图" : "中国视图");
+                    } else if (label.startsWith("地图语言")) {
+                        mapLanguage = mapLanguage == ChinaMapView.LANG_ZH
+                                ? ChinaMapView.LANG_EN : ChinaMapView.LANG_ZH;
+                        prefs.edit().putInt("mapLanguage", mapLanguage).apply();
+                        mapView.setMapLanguage(mapLanguage);
+                        updateMapChip();
+                        toast(mapLanguage == ChinaMapView.LANG_ZH ? "地图：中文" : "Map: English");
                     } else if (label.startsWith("地图设置")) {
                         showMapSettingsDialog();
                     } else if (label.startsWith("坐标系")) {
@@ -754,11 +780,31 @@ public class MainActivity extends Activity implements BtLink.Callback {
         }
     }
 
-    private void applyMapType(boolean announce) {
-        mapView.setMapType(mapType, tileProvider, tdtKey);
-        if (mapChip != null) {
-            mapChip.setText("地图：" + TileSource.typeName(mapType));
+    private void updateTitle() {
+        if (titleText != null) {
+            titleText.setText(viewMode == ChinaMapView.VIEW_WORLD
+                    ? "世界地图 · 蓝牙轨迹" : "中国地图 · 蓝牙轨迹");
         }
+    }
+
+    private void updateMapChip() {
+        if (mapChip != null) {
+            mapChip.setText("地图：" + TileSource.typeName(mapType)
+                    + (mapLanguage == ChinaMapView.LANG_EN ? " · EN" : ""));
+        }
+    }
+
+    private int effectiveTileProvider() {
+        if (viewMode == ChinaMapView.VIEW_WORLD
+                && tileProvider == TileSource.PROVIDER_AMAP) {
+            return TileSource.PROVIDER_ESRI;
+        }
+        return tileProvider;
+    }
+
+    private void applyMapType(boolean announce) {
+        mapView.setMapType(mapType, effectiveTileProvider(), tdtKey);
+        updateMapChip();
         if (announce && mapType != TileSource.TYPE_VECTOR && !hasNetwork()) {
             toast("该图层需要网络；标准底图仍可离线使用");
         }
@@ -1845,14 +1891,16 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "中国地图蓝牙轨迹  v1.2.7\n\n"
-                + "· 标准底图内置到县级（GCJ-02），完全离线\n"
+        String msg = "世界地图蓝牙轨迹  v1.2.8\n\n"
+                + "· 世界地图 + 中国到县级，离线；中文/English 地图标签\n"
+                + "· 中国省/市/县（GCJ-02）；世界国家/省州/城市（Natural Earth）\n"
                 + "· 街道/卫星/卫星+路网/地形为在线瓦片，需要网络\n"
                 + "· 输入坐标系可选：GCJ-02 / WGS-84 / BD-09 / CGCS2000\n"
                 + "· 蓝牙：经典 SPP + BLE GATT（自动枚举并订阅所有通知特征）\n"
                 + "· 坐标格式：31.2304,121.4737 / lat:.. lon:.. / JSON / NMEA GGA·RMC·GLL\n"
                 + "· 支持 31.2304N,121.4737E；NMEA GGA 的 HDOP 会换算成精度圈\n\n"
-                + "底图：DataV.GeoAtlas（省/市/县）；在线瓦片：高德/Esri/天地图。\n"
+                + "底图：DataV.GeoAtlas（中国省/市/县）+ Natural Earth（世界）；\n"
+                + "在线瓦片：高德/Esri/天地图。\n"
                 + "高德瓦片为免 key 接口，仅建议个人测试使用。\n"
                 + "CGCS2000 与 WGS-84 差异 <10cm，按 WGS-84 处理。\n"
                 + "轨迹仅保存在本次运行内存中，退出应用后清空。";

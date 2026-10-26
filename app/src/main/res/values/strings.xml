@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">中国地图蓝牙轨迹</string>
-    <string name="title">中国地图 · 蓝牙轨迹</string>
+    <string name="app_name">世界地图蓝牙轨迹</string>
+    <string name="title">世界地图 · 蓝牙轨迹</string>
     <string name="status_disconnected">蓝牙未连接</string>
     <string name="connect">连接设备</string>
     <string name="more">更多</string>

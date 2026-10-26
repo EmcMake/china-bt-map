@@ -1,13 +1,13 @@
-# 中国地图蓝牙轨迹（china-bt-map）
+# 世界地图蓝牙轨迹（china-bt-map）
 
-一个 Android App：内置**到县级**的中国地图（GCJ-02），通过蓝牙 BLE / 经典 SPP 接收经纬度文本，
+一个 Android App：内置**世界地图 + 到县级**的中国地图（GCJ-02），通过蓝牙 BLE / 经典 SPP 接收经纬度文本，
 在地图上实时打点、连成轨迹；支持 WGS-84 / GCJ-02 / BD-09 / CGCS2000 四种输入坐标系。
-标准底图完全离线；街道 / 卫星 / 卫星+路网 / 地形为在线瓦片（需要网络）。
+标准底图完全离线，支持中国/世界视图与**中文/English** 地图标签；街道 / 卫星 / 卫星+路网 / 地形为在线瓦片（需要网络）。
 
 - GitHub 仓库：<https://github.com/EmcMake/china-bt-map>
-- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.7 附件为 `china-bt-map-1.2.7.apk`）
-- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.7.apk>（点 Download）
-- 安装包：`dist/china-bt-map-1.2.7.apk`（约 7 MB，已签名）
+- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.8 附件为 `china-bt-map-1.2.8.apk`）
+- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.8.apk>（点 Download）
+- 安装包：`dist/china-bt-map-1.2.8.apk`（约 11 MB，已签名）
 - 包名：`com.btmap.china`，最低 Android 7.0（API 24），targetSdk 34
 - 纯 Java + Framework API，无 AndroidX / GMS / native 依赖
 - 权限：蓝牙相关 + `INTERNET` / `ACCESS_NETWORK_STATE`（仅在线图层使用）
@@ -16,11 +16,11 @@
 
 ## 一、安装
 
-把 `dist/china-bt-map-1.2.7.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
+把 `dist/china-bt-map-1.2.8.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
 系统提示“未知来源”时允许一次即可。或用 adb：
 
 ```bash
-adb install -r dist/china-bt-map-1.2.7.apk
+adb install -r dist/china-bt-map-1.2.8.apk
 ```
 
 > 自签名证书仅用于个人侧载，不能上架应用商店。升级请用同一个 `keystore/release.jks`
@@ -44,12 +44,20 @@ adb install -r dist/china-bt-map-1.2.7.apk
 | --- | --- |
 | ![坐标系](docs/screenshots/datum_dialog.png) | ![诊断](docs/screenshots/diagnostics.png) |
 
+| 世界地图（中文） | 世界地图（English） |
+| --- | --- |
+| ![世界中文](docs/screenshots/world_zh.png) | ![世界英文](docs/screenshots/world_en.png) |
+
+| 世界街道（Esri 全球瓦片） | 中国视图（English 省名） |
+| --- | --- |
+| ![世界街道](docs/screenshots/world_street.png) | ![中国英文](docs/screenshots/china_en.png) |
+
 ## 三、地图类型（顶部“地图：…”芯片，或 更多 → 地图类型）
 
 | 类型 | 数据来源 | 基准 | 需要网络 | 说明 |
 | --- | --- | --- | --- | --- |
-| **标准** | DataV.GeoAtlas（内置） | GCJ-02 | 否 | 省 + 地级市 + **2,728 个区县**边界与名称，约 5 米/像素 |
-| **街道** | 高德（默认）/ 天地图 / Esri | 高德 GCJ-02；其余 WGS-84 | 是 | 高德道路/POI 最全，可放大到街道级 |
+| **标准** | DataV.GeoAtlas + Natural Earth（内置） | GCJ-02 / WGS-84 | 否 | 世界国家/省州/城市 + 中国省/市/**2,728 区县**；中英文标签 |
+| **街道** | 高德（默认，中国）/ 天地图 / Esri（世界） | 高德 GCJ-02；其余 WGS-84 | 是 | 世界视图自动用 Esri；中国境内高德道路/POI 最全 |
 | **卫星** | 高德 / 天地图 / Esri | 高德 GCJ-02；其余 WGS-84 | 是 | 影像底图 |
 | **卫星+路网** | 高德（影像 + 透明路网/地名）/ 天地图 / Esri | 同上 | 是 | 影像上叠加道路、地名 |
 | **地形** | Esri（高德无地形） / 天地图 | WGS-84 | 是 | 地形晕渲 + 等高线 |
@@ -64,7 +72,25 @@ adb install -r dist/china-bt-map-1.2.7.apk
 > 高德瓦片使用免 key 的公开接口，便于个人测试；正式对外发布请改用**天地图**（免费申请 tk）
 > 或取得高德/其他底图授权。天地图在“地图设置”里填入 tk 即可切换，道路/影像均为官方服务。
 
-## 四、坐标系（默认 GCJ-02）
+## 四、世界地图与中英文
+
+- **世界视图**：Natural Earth 国家（242）、省/州（4,596）、城市（7,342），全球可缩放/拖动；
+- **中国视图**：保留原 DataV 省/市/县（2,728 区县）数据，县界和县名不丢；
+- **地图语言：中文 / English**：
+  - 国家、省/州、城市标签实时切换，无需重启；
+  - 中文模式中国境内继续用原有省/市/县中文名；
+  - English 模式中国境内显示英文省名/城市名，县名暂无官方英文数据，只保留县界；
+- 入口：更多 → **视图：中国/世界**、**地图语言：中文/English**；地图芯片显示 `标准 · EN`；
+- 默认世界视图；切换视图会适配到中国/世界范围，圆形定位按钮按当前视图适配；
+- 标准底图完全离线；世界街道/卫星/地形在线时自动使用 **Esri 全球瓦片**（高德仅中国境内完整）；
+- 在线瓦片的文字由瓦片提供方决定，不能像离线矢量底图那样在中文/English 间切换：
+  - 离线标准：中文/English 都可切；
+  - Esri 在线：英文为主；高德/天地图：中文为主。
+
+世界数据来源：**Natural Earth**（public domain），国家/省州/城市均带 `NAME_EN` / `NAME_ZH`
+（省州 `name_en/name_zh`，城市 `NAME_EN/NAME_ZH`），打包成 `WRLD1` 双 LOD 资产，约 5.2MB。
+
+## 五、坐标系（默认 GCJ-02）
 
 | 选项 | 说明 |
 | --- | --- |
@@ -78,7 +104,7 @@ adb install -r dist/china-bt-map-1.2.7.apk
 - 对话框里可勾选“同时按新坐标系重算已有轨迹”，用原始坐标重算，不丢数据；
 - 旧版本设置自动迁移（不转换→GCJ-02，WGS84→GCJ-02→WGS-84）。
 
-## 五、蓝牙（PHY6222 / BLE 透传模块）
+## 六、蓝牙（PHY6222 / BLE 透传模块）
 
 丝印 `PH9Y 62220C` 推断为奉加微 **PHY6222**（BLE 5.2 SoC）。它**只有 BLE，没有经典 SPP**，
 且**不定义应用层 UUID**——透传服务由模块固件决定（常见 0xFFE0/0xFFE1、0xFFF0/0xFFF1 或 128 位自定义）。
@@ -159,7 +185,7 @@ App 的做法：
 
 ![持续定位](docs/screenshots/location_continuous_phone.png)
 
-## 六、坐标数据格式（一行一个点）
+## 七、坐标数据格式（一行一个点）
 
 | 写法 | 示例 |
 | --- | --- |
@@ -174,7 +200,7 @@ App 的做法：
 纯数字默认按“纬度,经度”解析；第一个数超出 ±90 或明显更像经度时自动交换。
 支持半包/粘包；`0,0`、越界坐标丢弃；0.5m 内重复点去重；轨迹上限 5 万点。
 
-## 七、地图、缩放与精度
+## 八、地图、缩放与精度
 
 - 标准底图：DataV.GeoAtlas，**34 省级 + 475 地级市/区 + 2,728 区县 + 南海九段线**，GCJ-02，随 APK 内置；
 - 数据格式 `CNMAP2`：坐标 int32 微度（0.1m），每要素带 bbox，存两套 LOD：
@@ -186,7 +212,7 @@ App 的做法：
 - 精度：底部坐标 **7 位小数**；经纬网自动细化到 0.005°；比例尺按中心纬度实时计算，带白底；
 - 更多 → 地图显示：市界 / **县界** / 地名 / 经纬网 / 精度圈 / 坐标气泡，六个开关，记忆设置。
 
-## 八、定位红点
+## 九、定位红点
 
 - 白环 + 红核 + 高光 + 阴影；收到新点时 1.8 秒脉冲；
 - NMEA GGA 带 HDOP 时显示 **精度圈**（按米换算，随缩放变化）；
@@ -195,28 +221,31 @@ App 的做法：
   栅格图层下第二行会显示当前底图基准（`WGS-84` 或 `GCJ-02`）；
 - 标注点移出屏幕时，边缘显示 `↗ 1.2 km`，点它一键回中。
 
-## 九、重新构建
+## 十、重新构建
 
 工具链全部装在工程内 `toolchain/`，不污染系统：
 
 ```bash
 ./setup.sh --emulator   # JDK17 + Android SDK 34 + 模拟器镜像（一次性，约 2GB）
 ./build.sh              # aapt2 → javac → d8 → zipalign → apksigner
-./tests/run_tests.sh    # 纯 JVM 单测（124 项）
+./tests/run_tests.sh    # 纯 JVM 单测（135 项）
 ./verify_emulator.sh    # 无窗口模拟器安装 + 注入坐标 + 截图（KEEP=1 保留模拟器）
 python3 tools/fetch_geojson.py   # 抓取省/市/县 GeoJSON
-python3 tools/pack_map.py        # 重新生成内置地图数据（CNMAP2，含县级）
+python3 tools/pack_map.py        # 重新生成中国地图数据（CNMAP2，含县级）
+python3 tools/fetch_world.py     # 下载 Natural Earth 国家/省州/城市
+python3 tools/pack_world.py      # 生成世界地图数据（WRLD1，双语 + 双 LOD）
 ```
 
 - 版本号：`build.sh` 顶部 `VERSION_CODE` / `VERSION_NAME`；
 - 签名：`keystore/release.jks`，alias `chinamap`，密码 `chinamap123`。
 
-## 十、项目结构
+## 十一、项目结构
 
 ```
 app/src/main/
   AndroidManifest.xml               蓝牙 + INTERNET/ACCESS_NETWORK_STATE（在线图层）
-  assets/china_map.bin              CNMAP2：省/市/县，微度坐标 + 双 LOD + bbox
+  assets/china_map.bin              CNMAP2：中国省/市/县，微度坐标 + 双 LOD + bbox
+  assets/world_map.bin              WRLD1：世界国家/省州/城市，中英文名 + 双 LOD
   res/layout/activity_main.xml      地图 + 顶部状态 + 地图类型芯片 + 底部操作
   res/layout/dialog_devices.xml     设备列表 + 诊断入口
   res/layout/dialog_datum.xml       四种输入坐标系
@@ -224,6 +253,7 @@ app/src/main/
     MainActivity.java               界面、权限、地图类型/设置、坐标系、诊断
     map/ChinaMapView.java           自绘地图：省/市/县 LOD、懒 Path、缩放、红点
     map/MapData.java                CNMAP2 解析（level 0/1/2/3）
+    map/WorldData.java              WRLD1 世界数据解析（国家/省州/城市、双语）
     map/Mercator.java               Web 墨卡托投影
     map/TileSource.java             瓦片源（高德/Esri/天地图，GCJ/WGS，叠加层）
     map/TileMath.java               瓦片层级/编号计算
@@ -234,24 +264,25 @@ app/src/main/
     track/CoordParser.java          文本/JSON/NMEA 解析 + 精度
     track/TrackStore.java           原始坐标/坐标系/精度/WGS/重算
     bt/BtLink.java                  BLE 状态机、扫描、重试、订阅、诊断
-tools/                              GeoJSON 抓取、CNMAP2 打包、图标
-tests/CoreTest.java                 124 项 JVM 单测
+tools/                              GeoJSON/Natural Earth 抓取、CNMAP2/WRLD1 打包、图标
+tests/CoreTest.java                 135 项 JVM 单测
 docs/screenshots/                   模拟器/真机实测截图
 ```
 
-## 十一、验证情况
+## 十二、验证情况
 
-- **124 项 JVM 单测**通过：坐标系映射/BD-09 往返/WGS 换算、CNMAP2 精度、县界数量/点数、瓦片层级/URL、
-  LOD、投影、比例尺、TrackStore 重算、解析器（半包、NMEA、精度、越界）等；
-- Android 14 ARM64 模拟器：县级边界/县名、街道（高德）、卫星、卫星+路网（高德）、切回标准、
-  断网缓存，均无崩溃；截图见上；
+- **135 项 JVM 单测**通过：坐标系映射/BD-09 往返/WGS 换算、CNMAP2 精度、县界数量/点数、WRLD1 世界数据
+  （242 国家 / 4,596 省州 / 7,342 城市、双名、bbox）、瓦片层级/URL、LOD、投影、比例尺、TrackStore 重算、解析器；
+- Android 14 ARM64 模拟器：世界中文/English、世界街道（Esri 全球瓦片）、中国视图、县级边界/县名、
+  街道（高德）、卫星、卫星+路网、切回标准、断网缓存，均无崩溃；截图见上；
 - 真机 OPPO Reno5（Android 11）：安装、启动、标准/街道/卫星/卫星+路网切换、放大到街道级正常；
 - 蓝牙：GATT 连接后先发现服务、再订阅的修复已在真机验证（能发现服务并订阅到 2 个通知特征）；
   若你的 PHY6222 仍不收数据，把诊断页截图/日志发来按固件补一轮。
 
-## 十二、数据来源与合规
+## 十三、数据来源与合规
 
-- 离线省/市/县边界来自公开的 DataV.GeoAtlas，仅供个人学习/测试；
+- 离线中国省/市/县边界来自公开的 DataV.GeoAtlas，仅供个人学习/测试；
+- 世界国家/省州/城市来自 **Natural Earth**（public domain），地图角落标注 `Natural Earth`；
 - 在线街道/卫星/地形默认使用高德免 key 接口（GCJ-02），也可切换 Esri 或天地图；
 - 面向公众发布的地图应用需使用具备测绘资质的底图服务（如天地图正式 key），
   本 App 的边界数据与免 key 瓦片不适合作为正式对外产品发布。
