@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** 栅格瓦片的内存 + 磁盘缓存。 */
 public final class TileCache {
@@ -19,6 +21,7 @@ public final class TileCache {
 
     private final File root;
     private final LruCache<String, Bitmap> memory;
+    private final ExecutorService diskExecutor = Executors.newSingleThreadExecutor();
     private int writes;
 
     public TileCache(Context context) {
@@ -41,7 +44,13 @@ public final class TileCache {
                 x + "_" + y + ".png");
     }
 
-    public Bitmap get(String sourceId, int z, int x, int y) {
+    /** 只查内存，供绘制线程使用；绝不做磁盘 IO。 */
+    public Bitmap getMemory(String sourceId, int z, int x, int y) {
+        return memory.get(key(sourceId, z, x, y));
+    }
+
+    /** 后台线程从磁盘读取并放入内存；绘制线程不要调用。 */
+    public Bitmap loadFromDisk(String sourceId, int z, int x, int y) {
         String k = key(sourceId, z, x, y);
         Bitmap b = memory.get(k);
         if (b != null) {
@@ -68,9 +77,25 @@ public final class TileCache {
         put(sourceId, z, x, y, bmp, true);
     }
 
+    /** 先放内存立即可用，磁盘压缩/写入异步进行。 */
     public void put(String sourceId, int z, int x, int y, Bitmap bmp, boolean keepAlpha) {
-        String k = key(sourceId, z, x, y);
-        memory.put(k, bmp);
+        putMemory(sourceId, z, x, y, bmp);
+        final String sid = sourceId;
+        final int tz = z, tx = x, ty = y;
+        final boolean alpha = keepAlpha;
+        diskExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                persist(sid, tz, tx, ty, bmp, alpha);
+            }
+        });
+    }
+
+    public void putMemory(String sourceId, int z, int x, int y, Bitmap bmp) {
+        memory.put(key(sourceId, z, x, y), bmp);
+    }
+
+    private void persist(String sourceId, int z, int x, int y, Bitmap bmp, boolean keepAlpha) {
         File f = file(sourceId, z, x, y);
         File dir = f.getParentFile();
         if (dir != null && !dir.isDirectory() && !dir.mkdirs()) {

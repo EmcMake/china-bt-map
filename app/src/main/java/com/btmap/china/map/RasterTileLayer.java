@@ -16,6 +16,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -27,11 +28,13 @@ import java.util.concurrent.Executors;
 /** 在线栅格瓦片层：底图 + 透明叠加层（路网/地名）。 */
 public final class RasterTileLayer {
     private static final int MAX_TILES_PER_FRAME = 320;
-    private static final long FAIL_BACKOFF_MS = 30_000;
+    private static final int MAX_REQUESTS_PER_FRAME = 96;
+    private static final int MAX_ANCESTOR_LEVELS = 8;
+    private static final long FAIL_BACKOFF_MS = 10_000;
 
     private final TileCache cache;
     private final View target;
-    private final ExecutorService pool = Executors.newFixedThreadPool(4);
+    private final ExecutorService pool = Executors.newFixedThreadPool(6);
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Set<String> pending = Collections.synchronizedSet(new HashSet<String>());
     private final Map<String, Long> failed = new ConcurrentHashMap<>();
@@ -87,9 +90,12 @@ public final class RasterTileLayer {
         }
         boolean any = false;
         int drawnTiles = 0;
+        List<Need> needs = new ArrayList<>();
+        float centerX = viewW / 2f;
+        float centerY = viewH / 2f;
+
         for (int si = 0; si < sources.size(); si++) {
             TileSource src = sources.get(si);
-            boolean base = si == 0;
             int z = TileMath.zoomForScale(scale, src.minZoom, src.maxZoom);
             int n = TileMath.tileCount(z);
             double tw = 1.0 / n;
@@ -111,22 +117,59 @@ public final class RasterTileLayer {
                         continue;
                     }
                     int cy = Math.max(0, Math.min(n - 1, y));
-                    Bitmap b = cache.get(src.cacheId(), z, cx, cy);
+                    Bitmap b = cache.getMemory(src.cacheId(), z, cx, cy);
                     if (b != null) {
                         drawTile(canvas, b, x, y, tw, scale, offsetX, offsetY);
                         any = true;
                     } else {
-                        if (base && x == cx && y == cy) {
-                            Bitmap parent = drawParent(canvas, src, z, cx, cy, scale,
-                                    offsetX, offsetY);
-                            if (parent != null) {
-                                any = true;
+                        if (drawAncestor(canvas, src, z, x, y, scale,
+                                offsetX, offsetY)) {
+                            any = true;
+                        }
+                        float sx = (float) ((x + 0.5) * tw * scale + offsetX);
+                        float sy = (float) ((y + 0.5) * tw * scale + offsetY);
+                        double dx = sx - centerX;
+                        double dy = sy - centerY;
+                        needs.add(new Need(src, z, cx, cy, x, y,
+                                dx * dx + dy * dy, 1));
+                        if (z > src.minZoom) {
+                            int rawPx = Math.floorDiv(x, 2);
+                            int rawPy = Math.floorDiv(y, 2);
+                            int pn = TileMath.tileCount(z - 1);
+                            int px = ((rawPx % pn) + pn) % pn;
+                            int py = Math.max(0, Math.min(pn - 1, rawPy));
+                            if (cache.getMemory(src.cacheId(), z - 1, px, py) == null) {
+                                float psx = (float) ((rawPx + 0.5)
+                                        * (1.0 / pn) * scale + offsetX);
+                                float psy = (float) ((rawPy + 0.5)
+                                        * (1.0 / pn) * scale + offsetY);
+                                double pdx = psx - centerX;
+                                double pdy = psy - centerY;
+                                needs.add(new Need(src, z - 1, px, py,
+                                        rawPx, rawPy, pdx * pdx + pdy * pdy, 0));
                             }
                         }
-                        request(src, z, cx, cy);
                     }
                 }
             }
+        }
+
+        // 中心优先；父级先于当前级，先让屏幕有内容，再补清晰瓦片。
+        Collections.sort(needs, new Comparator<Need>() {
+            @Override
+            public int compare(Need a, Need b) {
+                if (a.priority != b.priority) {
+                    return a.priority - b.priority;
+                }
+                return Double.compare(a.dist, b.dist);
+            }
+        });
+        int budget = MAX_REQUESTS_PER_FRAME;
+        for (Need need : needs) {
+            if (budget-- <= 0) {
+                break;
+            }
+            request(need.src, need.z, need.cx, need.cy);
         }
         lastEmpty = !any;
     }
@@ -141,27 +184,33 @@ public final class RasterTileLayer {
         canvas.drawBitmap(b, null, new RectF(l, t, r + 1, bo + 1), paint);
     }
 
-    /** 未加载时用上一级瓦片放大占位，避免整屏空白。 */
-    private Bitmap drawParent(Canvas canvas, TileSource src, int z, int x, int y,
-                              double scale, double offsetX, double offsetY) {
-        for (int dz = 1; dz <= 3; dz++) {
+    /**
+     * 当前级未命中时，向上找任意可用的粗瓦片，裁剪后放大占位。
+     * 同时处理横向环绕、纵向边缘。
+     */
+    private boolean drawAncestor(Canvas canvas, TileSource src, int z, int x, int y,
+                                 double scale, double offsetX, double offsetY) {
+        for (int dz = 1; dz <= MAX_ANCESTOR_LEVELS; dz++) {
             int pz = z - dz;
             if (pz < src.minZoom) {
-                return null;
+                return false;
             }
             int sub = 1 << dz;
-            int px = x >> dz;
-            int py = y >> dz;
-            Bitmap b = cache.get(src.cacheId(), pz, px, py);
+            int rawPx = Math.floorDiv(x, sub);
+            int rawPy = Math.floorDiv(y, sub);
+            int pn = TileMath.tileCount(pz);
+            int px = ((rawPx % pn) + pn) % pn;
+            int py = Math.max(0, Math.min(pn - 1, rawPy));
+            Bitmap b = cache.getMemory(src.cacheId(), pz, px, py);
             if (b == null) {
                 continue;
             }
-            double pw = 1.0 / TileMath.tileCount(pz);
-            float left = (float) (px * pw * scale + offsetX);
-            float top = (float) (py * pw * scale + offsetY);
+            double pw = 1.0 / pn;
+            float left = (float) (rawPx * pw * scale + offsetX);
+            float top = (float) (rawPy * pw * scale + offsetY);
             float size = (float) (pw * scale);
-            float fx = (x - px * sub) / (float) sub;
-            float fy = (y - py * sub) / (float) sub;
+            float fx = (x - rawPx * sub) / (float) sub;
+            float fy = (y - rawPy * sub) / (float) sub;
             float fs = 1f / sub;
             Rect srcRect = new Rect(
                     (int) (b.getWidth() * fx),
@@ -171,9 +220,9 @@ public final class RasterTileLayer {
             RectF dst = new RectF(left + fx * size, top + fy * size,
                     left + (fx + fs) * size + 1, top + (fy + fs) * size + 1);
             canvas.drawBitmap(b, srcRect, dst, paint);
-            return b;
+            return true;
         }
-        return null;
+        return false;
     }
 
     private void request(final TileSource src, final int z, final int x, final int y) {
@@ -189,31 +238,45 @@ public final class RasterTileLayer {
         pool.execute(new Runnable() {
             @Override
             public void run() {
-                Bitmap bmp = null;
+                Bitmap bmp = cache.getMemory(src.cacheId(), z, x, y);
+                boolean fromDisk = false;
+                if (bmp == null) {
+                    // 磁盘读取只在后台线程进行，不阻塞绘制。
+                    bmp = cache.loadFromDisk(src.cacheId(), z, x, y);
+                    fromDisk = bmp != null;
+                }
                 HttpURLConnection conn = null;
-                try {
-                    conn = (HttpURLConnection) new URL(url).openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
-                    conn.setRequestProperty("User-Agent", "ChinaBtMap/1.3.5 (Android; personal map test)");
-                    conn.setInstanceFollowRedirects(true);
-                    int code = conn.getResponseCode();
-                    if (code == 200) {
-                        try (InputStream in = conn.getInputStream()) {
-                            bmp = BitmapFactory.decodeStream(in);
+                if (bmp == null) {
+                    try {
+                        conn = (HttpURLConnection) new URL(url).openConnection();
+                        conn.setConnectTimeout(4000);
+                        conn.setReadTimeout(6000);
+                        conn.setRequestProperty("User-Agent",
+                                "ChinaBtMap/1.3.6 (Android; personal map test)");
+                        conn.setInstanceFollowRedirects(true);
+                        int code = conn.getResponseCode();
+                        if (code == 200) {
+                            try (InputStream in = conn.getInputStream()) {
+                                bmp = BitmapFactory.decodeStream(in);
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                        bmp = null;
+                    } finally {
+                        if (conn != null) {
+                            conn.disconnect();
                         }
                     }
-                } catch (Throwable ignored) {
-                    bmp = null;
-                } finally {
-                    if (conn != null) {
-                        conn.disconnect();
-                    }
-                    pending.remove(key);
                 }
+                pending.remove(key);
                 if (bmp != null) {
                     failed.remove(key);
-                    cache.put(src.cacheId(), z, x, y, bmp, src.transparent);
+                    if (!fromDisk) {
+                        // 先内存可用并重绘，磁盘写入由 TileCache 异步完成。
+                        cache.put(src.cacheId(), z, x, y, bmp, src.transparent);
+                    } else {
+                        cache.putMemory(src.cacheId(), z, x, y, bmp);
+                    }
                 } else {
                     failed.put(key, System.currentTimeMillis());
                 }
@@ -238,5 +301,28 @@ public final class RasterTileLayer {
 
     private String keyFor(TileSource src) {
         return src.provider == TileSource.PROVIDER_TIANDITU ? tiandituKey : "";
+    }
+
+    private static final class Need {
+        final TileSource src;
+        final int z;
+        final int cx;
+        final int cy;
+        final int x;
+        final int y;
+        final double dist;
+        final int priority;
+
+        Need(TileSource src, int z, int cx, int cy, int x, int y,
+             double dist, int priority) {
+            this.src = src;
+            this.z = z;
+            this.cx = cx;
+            this.cy = cy;
+            this.x = x;
+            this.y = y;
+            this.dist = dist;
+            this.priority = priority;
+        }
     }
 }
