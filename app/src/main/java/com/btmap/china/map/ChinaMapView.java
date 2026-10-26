@@ -83,6 +83,7 @@ public class ChinaMapView extends View {
     private Path countryDetail;
     private ExecutorService worldExecutor;
     private boolean interacting;
+    private long interactionStart;
     private final Runnable endInteraction = () -> {
         if (interacting) {
             interacting = false;
@@ -907,8 +908,10 @@ public class ChinaMapView extends View {
         double y1 = Mercator.latToY(-60);
         worldFitScale = Math.min(getWidth() / (x1 - x0),
                 getHeight() / (y1 - y0)) * 0.92;
-        scale = worldFitScale;
-        minScale = worldFitScale * 0.8;
+        double cover = Math.max(getWidth() / (x1 - x0),
+                getHeight() / (y1 - y0));
+        scale = Math.min(cover, MAX_WORLD_PX);
+        minScale = worldFitScale * 0.85;
         maxScale = MAX_WORLD_PX;
         offsetX = getWidth() / 2.0 - (x0 + x1) / 2.0 * scale;
         offsetY = getHeight() / 2.0 - (y0 + y1) / 2.0 * scale;
@@ -928,9 +931,10 @@ public class ChinaMapView extends View {
         double y0 = Mercator.latToY(FIT_LAT_MAX);
         double y1 = Mercator.latToY(FIT_LAT_MIN);
         fitScale = Math.min(getWidth() / (x1 - x0), getHeight() / (y1 - y0)) * 0.94;
+        double cover = Math.max(getWidth() / (x1 - x0), getHeight() / (y1 - y0));
         minScale = fitScale * 0.6;
         updateZoomLimits();
-        scale = fitScale;
+        scale = cover;
         offsetX = getWidth() / 2.0 - (x0 + x1) / 2.0 * scale;
         offsetY = getHeight() / 2.0 - (y0 + y1) / 2.0 * scale;
         invalidate();
@@ -1158,6 +1162,10 @@ public class ChinaMapView extends View {
     // ------------------------------------------------------------ 绘制
     @Override
     protected void onDraw(Canvas canvas) {
+        if (interacting
+                && SystemClock.uptimeMillis() - interactionStart > 1500) {
+            interacting = false;
+        }
         canvas.drawColor(COLOR_SEA);
         if (data == null) {
             canvas.drawText(loadError == null ? "地图数据缺失" : loadError,
@@ -1469,6 +1477,9 @@ public class ChinaMapView extends View {
     }
 
     private void drawLabels(Canvas canvas) {
+        if (interacting) {
+            return;
+        }
         drawWorldLabels(canvas);
         if (mapLanguage != LANG_ZH || viewMode != VIEW_CHINA
                 || scale < fitScale * 0.8) {
@@ -1591,16 +1602,16 @@ public class ChinaMapView extends View {
                 }
                 String label = shortName(f.label(mapLanguage));
                 float tw = pLabel.measureText(label);
-                float tx = Math.max(dp(10f) + tw / 2,
-                        Math.min(getWidth() - dp(104f) - tw / 2, pt[0]));
+                float tx = pt[0];
+                if (tx - tw / 2f < dp(4f) || tx + tw / 2f > getWidth() - dp(4f)) {
+                    continue;
+                }
                 float[][] offsets = {
-                        {0, 0}, {0, -14}, {0, 14}, {0, -28}, {0, 28},
-                        {-dp(34f), 0}, {dp(34f), 0}
+                        {0, 0}, {0, -14}, {0, 14}, {0, -28}, {0, 28}
                 };
                 boolean placed = false;
                 for (float[] off : offsets) {
-                    float px = Math.max(dp(10f) + tw / 2,
-                            Math.min(getWidth() - dp(12f) - tw / 2, tx + off[0]));
+                    float px = tx + off[0];
                     float ty = pt[1] + off[1];
                     if (!inMapArea(px, ty, dp(12f))) {
                         continue;
@@ -2272,11 +2283,12 @@ public class ChinaMapView extends View {
     private void beginInteraction() {
         removeCallbacks(endInteraction);
         interacting = true;
+        interactionStart = SystemClock.uptimeMillis();
     }
 
     private void endInteractionSoon() {
         removeCallbacks(endInteraction);
-        postDelayed(endInteraction, 180);
+        postDelayed(endInteraction, 250);
     }
 
     @Override

@@ -99,29 +99,31 @@ public final class RasterTileLayer {
             double wx1 = (viewW - offsetX) / scale;
             double wy1 = (viewH - offsetY) / scale;
 
-            int x0 = TileMath.tileIndex(wx0, z);
-            int x1 = TileMath.tileIndex(wx1, z);
-            int y0 = TileMath.tileIndex(wy0, z);
-            int y1 = TileMath.tileIndex(wy1, z);
+            int x0 = (int) Math.floor(wx0 * n) - 1;
+            int x1 = (int) Math.ceil(wx1 * n) + 1;
+            int y0 = (int) Math.floor(wy0 * n) - 1;
+            int y1 = (int) Math.ceil(wy1 * n) + 1;
 
             for (int x = x0; x <= x1; x++) {
+                int cx = ((x % n) + n) % n;
                 for (int y = y0; y <= y1; y++) {
                     if (drawnTiles++ > MAX_TILES_PER_FRAME) {
                         continue;
                     }
-                    Bitmap b = cache.get(src.cacheId(), z, x, y);
+                    int cy = Math.max(0, Math.min(n - 1, y));
+                    Bitmap b = cache.get(src.cacheId(), z, cx, cy);
                     if (b != null) {
                         drawTile(canvas, b, x, y, tw, scale, offsetX, offsetY);
                         any = true;
                     } else {
-                        if (base) {
-                            Bitmap parent = drawParent(canvas, src, z, x, y, scale,
+                        if (base && x == cx && y == cy) {
+                            Bitmap parent = drawParent(canvas, src, z, cx, cy, scale,
                                     offsetX, offsetY);
                             if (parent != null) {
                                 any = true;
                             }
                         }
-                        request(src, z, x, y);
+                        request(src, z, cx, cy);
                     }
                 }
             }

@@ -5,9 +5,9 @@
 标准底图完全离线，支持中国/世界视图与**中文/English** 地图标签；街道 / 卫星 / 卫星+路网 / 地形为在线瓦片（需要网络）。
 
 - GitHub 仓库：<https://github.com/EmcMake/china-bt-map>
-- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.3.0 附件为 `china-bt-map-1.3.0.apk`）
-- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.3.0.apk>（点 Download）
-- 安装包：`dist/china-bt-map-1.3.0.apk`（约 9.7 MB，已签名）
+- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.3.1 附件为 `china-bt-map-1.3.1.apk`）
+- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.3.1.apk>（点 Download）
+- 安装包：`dist/china-bt-map-1.3.1.apk`（约 9.7 MB，已签名）
 - 包名：`com.btmap.china`，最低 Android 7.0（API 24），targetSdk 34
 - 纯 Java + Framework API，无 AndroidX / GMS / native 依赖
 - 权限：蓝牙相关 + `INTERNET` / `ACCESS_NETWORK_STATE`（仅在线图层使用）
@@ -16,11 +16,11 @@
 
 ## 一、安装
 
-把 `dist/china-bt-map-1.3.0.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
+把 `dist/china-bt-map-1.3.1.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
 系统提示“未知来源”时允许一次即可。或用 adb：
 
 ```bash
-adb install -r dist/china-bt-map-1.3.0.apk
+adb install -r dist/china-bt-map-1.3.1.apk
 ```
 
 > 自签名证书仅用于个人侧载，不能上架应用商店。升级请用同一个 `keystore/release.jks`
@@ -64,6 +64,7 @@ adb install -r dist/china-bt-map-1.3.0.apk
   - `−` 收回成球，`×` 完全隐藏；
   - 隐藏后从“更多 → 快捷切换球”恢复；
   - 当前选项蓝底白字，切换立即生效并保存；
+  - 地图滑动/缩放时标签暂隐，抬手约 250ms 后按新位置显示，避免文字逐帧漂移；
 - “更多”改为圆角胶囊按钮，点开是**底部面板**：
   - 圆角卡片、分组标题、两列图标卡片；
   - 地图类型/坐标系显示当前值；
@@ -103,7 +104,8 @@ adb install -r dist/china-bt-map-1.3.0.apk
   - 中文模式中国境内继续用原有省/市/县中文名；
   - English 模式中国境内显示英文省名/城市名，县名暂无官方英文数据，只保留县界；
 - 入口：顶部 **世界/中国**、**中文/EN** 小按钮；地图芯片显示 `标准 · EN`；
-- 默认世界视图；切换视图会适配到中国/世界范围，圆形定位按钮按当前视图适配；
+- 默认世界视图；切换视图会铺满屏幕，缩小可回到完整世界/中国范围；
+- 在线瓦片横向环绕、纵向夹取，铺满视口四边，不出现空白条；
 - 标准底图完全离线；世界街道/卫星/地形在线时自动使用 **Esri 全球瓦片**（高德仅中国境内完整）；
 - 在线瓦片的文字由瓦片提供方决定，不能像离线矢量底图那样在中文/English 间切换：
   - 离线标准：中文/English 都可切；
@@ -147,27 +149,9 @@ App 的做法：
    - 7 步状态：权限 / 蓝牙开关 / 扫描 / 连接 / 发现服务 / 订阅通知 / 收到数据；
    - 设备名称、MAC、RSSI、MTU、收字节数、最近数据；
    - 全部 Service/Characteristic UUID、属性、是否已订阅、各特征收字节；
-   - 重连、重新订阅、发送指令（文本或 HEX，支持 `\r\n`）。
+   - 重连、重新订阅。
 
-> 若模块固件要求先发握手/唤醒指令，用“发送指令”发一次（例如 `AT`、`\r\n`）即可；
-> 仍连不上时，把诊断页内容发给开发者，按实际 UUID/固件补一轮适配。
-
-
-### 指尖陀螺（用户模式）
-
-协议来自《蓝牙版指尖陀螺协议(用户模式).docx》：文字用 **GB2312** 编码，每幅最多 20 个字，指令/响应以 `\r\n` 结尾。
-
-| 操作 | 指令 | 期望响应 |
-| --- | --- | --- |
-| 第 1 幅文字 | `T01=1234567\r\n` | `T01 OK\r\n` |
-| 第 2 幅文字 | `T02=实例实例实例\r\n` | `T02 OK\r\n` |
-| 清除全部 | `DEL ALL\r\n` | `DEL OK\r\n` |
-
-- 入口：更多 → **指尖陀螺（用户模式）…**；
-- 面板里选 1–20 幅、输入 ≤20 字，点“发送本幅”；“测试 T01”一键发 `T01=1234567`；“DEL ALL”清除；
-- 回包区显示时间、TX/RX hex、GB2312 文本、`T01 OK` / 超时、write 类型和 status；
-- 发送时先 Write Request，1.2 秒无回包自动改用 Write Without Response 重发，并尝试 Read FFE1；
-- 设备必须是**红灯用户模式**；如果一直超时，先确认灯色、设备名（BQ-Q1）和是否被别的手机占用。
+> 工具栏已移除“发送指令”和“指尖陀螺（用户模式）”入口；底层 BLE 诊断/发送能力保留，不再显示在“更多”面板。
 
 
 ### 定位并发送（BLE）

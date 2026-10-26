@@ -800,11 +800,6 @@ public class MainActivity extends Activity implements BtLink.Callback {
                 this::toggleLog), new MoreItem(R.drawable.ic_bluetooth, "蓝牙诊断",
                 "服务 / 特征 / 错误", false, false,
                 this::showDiagnostics), dialog);
-        addMoreRow(content, new MoreItem(R.drawable.ic_terminal, "发送指令",
-                "AT / 自定义字符", false, false,
-                this::showSendDialog), new MoreItem(R.drawable.ic_spinner, "指尖陀螺",
-                "T01 / DEL ALL", false, false,
-                this::showSpinnerDialog), dialog);
 
         addMoreSection(content, "界面");
         addMoreFull(content, new MoreItem(R.drawable.ic_globe, "快捷切换球",
@@ -2256,8 +2251,9 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "世界地图蓝牙轨迹  v1.3.0\n\n"
+        String msg = "世界地图蓝牙轨迹  v1.3.1\n\n"
                 + "· 悬浮球：世界/中国、中文/EN，可拖动/隐藏；更多面板分组\n"
+                + "· 世界/中国铺满屏幕；滑动时标签暂隐，不漂移\n"
                 + "· 世界地图数据抽稀 + 后台 Path，切换/缩放更流畅\n"
                 + "· 世界地图 + 中国到县级，离线；中文/English 地图标签\n"
                 + "· 中国省/市/县（GCJ-02）；世界国家/省州/城市（Natural Earth）\n"
