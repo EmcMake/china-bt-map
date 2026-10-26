@@ -1273,7 +1273,7 @@ public class ChinaMapView extends View {
                 }
             }
             double adminBorderThreshold = viewMode == VIEW_CHINA
-                    ? fitScale * 0.8 : worldFitScale * 10;
+                    ? fitScale * 0.8 : worldFitScale * 1.5;
             if (viewMode == VIEW_WORLD && scale >= adminBorderThreshold) {
                 pWorldAdminBorder.setStrokeWidth(dp(0.55f) / s);
                 for (WorldDrawn d : worldAdmin1) {
@@ -1562,7 +1562,7 @@ public class ChinaMapView extends View {
                 }
                 canvas.drawText(d.feature.name, pt[0], pt[1], pLabelHalo);
                 canvas.drawText(d.feature.name, pt[0], pt[1], pLabel);
-                if (++drawn > 100) {
+                if (++drawn > 80) {
                     break;
                 }
             }
@@ -1576,6 +1576,7 @@ public class ChinaMapView extends View {
         if (world == null) {
             return;
         }
+        List<RectF> usedBoxes = new ArrayList<>();
 
         // 国家名（世界视图低缩放，按等级/避让限量）
         if (viewMode == VIEW_WORLD) {
@@ -1587,7 +1588,7 @@ public class ChinaMapView extends View {
             boolean low = scale <= worldFitScale * 2.2;
             int maxRank = 4;
             int cap = low ? 75 : 90;
-            List<RectF> boxes = new ArrayList<>();
+            List<RectF> boxes = usedBoxes;
             int drawn = 0;
             for (WorldDrawn d : countryLabelOrder) {
                 WorldData.Feature f = d.feature;
@@ -1656,7 +1657,7 @@ public class ChinaMapView extends View {
             pLabelHalo.setFakeBoldText(false);
             pLabel.setColor(0xFF5D4A35);
             int drawn = 0;
-            List<RectF> boxes = new ArrayList<>();
+            List<RectF> boxes = usedBoxes;
             for (WorldDrawn d : worldAdmin1) {
                 WorldData.Feature f = d.feature;
                 if (!f.hasCenter() || f.labelRank > 4) {
@@ -1692,17 +1693,22 @@ public class ChinaMapView extends View {
                 boxes.add(box);
                 canvas.drawText(label, pt[0], pt[1], pLabelHalo);
                 canvas.drawText(label, pt[0], pt[1], pLabel);
-                if (++drawn > 80) {
+                if (++drawn > 100) {
                     break;
                 }
             }
         }
 
         // 城市名
-        double placeThreshold = viewMode == VIEW_CHINA
-                ? fitScale * 3.5 : worldFitScale * 40;
+        boolean isWorldPlaces = viewMode == VIEW_WORLD;
+        double placeThreshold = isWorldPlaces
+                ? worldFitScale : fitScale * 3.5;
         if (scale >= placeThreshold && !interacting
                 && !(viewMode == VIEW_CHINA && mapLanguage == LANG_ZH)) {
+            boolean nearWorld = isWorldPlaces && scale < worldFitScale * 1.8;
+            boolean coverWorld = isWorldPlaces && scale < worldFitScale * 3.5;
+            int minPop = nearWorld ? 5_000_000 : (coverWorld ? 2_000_000 : 200_000);
+            int placeCap = nearWorld ? 40 : (coverWorld ? 60 : 100);
             pLabel.setTextSize(dp(9.5f));
             pLabelHalo.setTextSize(dp(9.5f));
             pLabel.setFakeBoldText(false);
@@ -1712,7 +1718,10 @@ public class ChinaMapView extends View {
             int drawn = 0;
             for (WorldDrawn d : worldPlaces) {
                 WorldData.Feature f = d.feature;
-                if (!f.hasCenter() || f.pop < 100_000) {
+                if (!f.hasCenter()) {
+                    continue;
+                }
+                if (!f.capital && f.pop < minPop) {
                     continue;
                 }
                 if (mapLanguage == LANG_ZH && isChina(f)) {
@@ -1725,11 +1734,26 @@ public class ChinaMapView extends View {
                 if (!inMapArea(pt[0], pt[1], dp(6f))) {
                     continue;
                 }
-                canvas.drawCircle(pt[0], pt[1], r, pWorldPlaceDot);
                 String label = f.label(mapLanguage);
+                float lw = pLabel.measureText(label);
+                RectF box = new RectF(pt[0] - lw / 2 - dp(2f), pt[1] - dp(10f),
+                        pt[0] + lw / 2 + dp(2f), pt[1] + dp(3f));
+                boolean hit = false;
+                for (RectF b : usedBoxes) {
+                    if (RectF.intersects(b, box)) {
+                        hit = true;
+                        break;
+                    }
+                }
+                if (hit) {
+                    continue;
+                }
+                usedBoxes.add(box);
+                float dotR = f.capital ? r * 1.35f : r;
+                canvas.drawCircle(pt[0], pt[1], dotR, pWorldPlaceDot);
                 canvas.drawText(label, pt[0], pt[1] - dp(5f), pLabelHalo);
                 canvas.drawText(label, pt[0], pt[1] - dp(5f), pLabel);
-                if (++drawn > 100) {
+                if (++drawn > placeCap) {
                     break;
                 }
             }

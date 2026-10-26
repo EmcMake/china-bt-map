@@ -258,6 +258,9 @@ def place_features():
             "center": (shp["lat"], shp["lon"]),
             "pop": num(rec.get("POP_MAX")),
             "label_rank": num(rec.get("SCALERANK"), 5),
+            "capital": 1 if (rec.get("ADM0CAP") == "1"
+                             or rec.get("FEATURECLA", "").lower()
+                             .startswith("admin-0 capital")) else 0,
             "rings": [],
             "detail_eps": 0,
             "overview_eps": 0,
@@ -308,8 +311,9 @@ def pack(features):
                 b = (min(xs), min(ys), max(xs), max(ys))
             else:
                 b = (cx, cy, cx, cy)
-            f.write(struct.pack(">BBHHH", ft["level"],
+            f.write(struct.pack(">BBBHHH", ft["level"],
                                  max(0, min(255, ft["label_rank"])),
+                                 1 if ft.get("capital", 0) else 0,
                                  len(ne), len(nz), len(parent)))
             f.write(ne)
             f.write(nz)

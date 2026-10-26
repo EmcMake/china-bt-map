@@ -2251,10 +2251,11 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "世界地图蓝牙轨迹  v1.3.2\n\n"
+        String msg = "世界地图蓝牙轨迹  v1.3.3\n\n"
                 + "· 悬浮球：世界/中国、中文/EN，可拖动/隐藏；更多面板分组\n"
                 + "· 世界/中国铺满屏幕；滑动时标签暂隐，不漂移\n"
                 + "· 世界最小缩放清晰化，detail 边界与标签更大\n"
+                + "· 其他国家显示省州/城市信息，最小显示首都\n"
                 + "· 世界地图数据抽稀 + 后台 Path，切换/缩放更流畅\n"
                 + "· 世界地图 + 中国到县级，离线；中文/English 地图标签\n"
                 + "· 中国省/市/县（GCJ-02）；世界国家/省州/城市（Natural Earth）\n"

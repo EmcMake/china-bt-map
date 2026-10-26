@@ -442,6 +442,13 @@ public final class CoreTest {
         check("China 英文标签", china != null && "China".equals(china.label(WorldData.LANG_EN)));
         check("USA 英文标签", usa != null && usa.label(WorldData.LANG_EN).startsWith("United States"));
         check("国家有 detail 环", china != null && china.detail.start.length > 0);
+        int capitals = 0;
+        for (WorldData.Feature f : world.features) {
+            if (f.level == WorldData.LEVEL_PLACE && f.capital) {
+                capitals++;
+            }
+        }
+        check("世界首都标记 >100 (" + capitals + ")", capitals > 100);
         check("世界 bbox 覆盖全球", world.minX <= 0.0001f && world.maxX >= 0.9999f);
     }
 

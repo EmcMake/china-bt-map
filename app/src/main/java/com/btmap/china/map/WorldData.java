@@ -57,11 +57,12 @@ public final class WorldData {
         public final float maxY;
         public final int pop;
         public final int labelRank;
+        public final boolean capital;
 
         Feature(int level, String nameEn, String nameZh, String parent,
                 double centerLon, double centerLat,
                 RingSet detail, RingSet overview, float minX, float minY,
-                float maxX, float maxY, int pop, int labelRank) {
+                float maxX, float maxY, int pop, int labelRank, boolean capital) {
             this.level = level;
             this.nameEn = nameEn;
             this.nameZh = nameZh;
@@ -76,6 +77,7 @@ public final class WorldData {
             this.maxY = maxY;
             this.pop = pop;
             this.labelRank = labelRank;
+            this.capital = capital;
         }
 
         public boolean hasCenter() {
@@ -133,6 +135,7 @@ public final class WorldData {
         for (int i = 0; i < count; i++) {
             int level = in.readUnsignedByte();
             int labelRank = in.readUnsignedByte();
+            boolean capital = in.readUnsignedByte() == 1;
             int nameEnLen = in.readUnsignedShort();
             int nameZhLen = in.readUnsignedShort();
             int parentLen = in.readUnsignedShort();
@@ -171,7 +174,7 @@ public final class WorldData {
             if (maxY > gMaxY) gMaxY = maxY;
 
             features[i] = new Feature(level, nameEn, nameZh, parent, centerLon, centerLat,
-                    detail, overview, minX, minY, maxX, maxY, pop, labelRank);
+                    detail, overview, minX, minY, maxX, maxY, pop, labelRank, capital);
         }
         return new WorldData(features, gMinX, gMinY, gMaxX, gMaxY);
     }
