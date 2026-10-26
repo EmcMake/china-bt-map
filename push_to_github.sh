@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 ORG="${1:-EmcMake}"
 REPO="${2:-china-bt-map}"
 VIS="${3:-public}"
-VERSION="${4:-1.2.8}"
+VERSION="${4:-1.2.9}"
 APK="dist/china-bt-map-$VERSION.apk"
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then

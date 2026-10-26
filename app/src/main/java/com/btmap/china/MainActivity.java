@@ -3,6 +3,7 @@ package com.btmap.china;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.bluetooth.BluetoothAdapter;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -14,18 +15,25 @@ import android.net.NetworkInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.text.InputType;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RadioButton;
@@ -73,6 +81,10 @@ public class MainActivity extends Activity implements BtLink.Callback {
     private TextView countText;
     private TextView datumChip;
     private TextView mapChip;
+    private TextView quickWorld;
+    private TextView quickChina;
+    private TextView quickZh;
+    private TextView quickEn;
     private TextView logText;
     private ScrollView logPanel;
     private Button btnConnect;
@@ -169,6 +181,10 @@ public class MainActivity extends Activity implements BtLink.Callback {
         countText = findViewById(R.id.countText);
         datumChip = findViewById(R.id.datumChip);
         mapChip = findViewById(R.id.mapChip);
+        quickWorld = findViewById(R.id.quickWorld);
+        quickChina = findViewById(R.id.quickChina);
+        quickZh = findViewById(R.id.quickZh);
+        quickEn = findViewById(R.id.quickEn);
         logPanel = findViewById(R.id.logPanel);
         logText = findViewById(R.id.logText);
         btnConnect = findViewById(R.id.btnConnect);
@@ -192,6 +208,10 @@ public class MainActivity extends Activity implements BtLink.Callback {
 
         btnConnect.setOnClickListener(v -> requestConnect());
         btnMore.setOnClickListener(v -> showMoreMenu());
+        quickWorld.setOnClickListener(v -> selectViewMode(ChinaMapView.VIEW_WORLD));
+        quickChina.setOnClickListener(v -> selectViewMode(ChinaMapView.VIEW_CHINA));
+        quickZh.setOnClickListener(v -> selectMapLanguage(ChinaMapView.LANG_ZH));
+        quickEn.setOnClickListener(v -> selectMapLanguage(ChinaMapView.LANG_EN));
         datumChip.setOnClickListener(v -> showDatumDialog());
         mapChip.setOnClickListener(v -> showMapTypeDialog());
         findViewById(R.id.btnZoomIn).setOnClickListener(v -> mapView.zoomBy(1.8));
@@ -211,6 +231,7 @@ public class MainActivity extends Activity implements BtLink.Callback {
         TrackStore.INSTANCE.addListener(trackListener);
         updateFollowButton();
         updateDatumChip();
+        updateQuickSwitch();
         refreshCount();
         if (TrackStore.INSTANCE.size() > 0) {
             double[] last = TrackStore.INSTANCE.lastLatLon();
@@ -692,78 +713,213 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     // ------------------------------------------------------------ 菜单
-    private void showMoreMenu() {
-        final List<String> items = new ArrayList<>();
-        items.add("地图类型：" + TileSource.typeName(mapType));
-        items.add("视图：" + (viewMode == ChinaMapView.VIEW_WORLD ? "世界" : "中国"));
-        items.add("地图语言：" + (mapLanguage == ChinaMapView.LANG_ZH ? "中文" : "English"));
-        items.add("地图设置（在线源 / 天地图 tk / 清缓存）");
-        items.add("坐标系：" + CoordSystems.chipLabel(datum));
-        items.add("演示数据（画一条示例轨迹）");
-        items.add("输入测试坐标");
-        items.add("定位并发送…");
-        items.add("定位协议…");
-        items.add(logVisible ? "隐藏日志面板" : "显示日志面板");
-        items.add("蓝牙诊断");
-        items.add("向模块发送指令…");
-        items.add("指尖陀螺（用户模式）…");
-        items.add("地图显示…");
-        if (connected) {
-            items.add("断开蓝牙连接");
+    private static final class MoreItem {
+        final int icon;
+        final String title;
+        final String subtitle;
+        final boolean selected;
+        final boolean danger;
+        final Runnable action;
+
+        MoreItem(int icon, String title, String subtitle, boolean selected,
+                 boolean danger, Runnable action) {
+            this.icon = icon;
+            this.title = title;
+            this.subtitle = subtitle == null ? "" : subtitle;
+            this.selected = selected;
+            this.danger = danger;
+            this.action = action;
         }
-        items.add("关于 / 数据格式");
-        final String[] labels = items.toArray(new String[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("更多")
-                .setItems(labels, (d, which) -> {
-                    String label = labels[which];
-                    if (label.startsWith("地图类型")) {
-                        showMapTypeDialog();
-                    } else if (label.startsWith("视图")) {
-                        viewMode = viewMode == ChinaMapView.VIEW_WORLD
-                                ? ChinaMapView.VIEW_CHINA : ChinaMapView.VIEW_WORLD;
-                        prefs.edit().putInt("viewMode", viewMode).apply();
-                        mapView.setViewMode(viewMode);
-                        updateTitle();
-                        applyMapType(false);
-                        toast(viewMode == ChinaMapView.VIEW_WORLD ? "世界视图" : "中国视图");
-                    } else if (label.startsWith("地图语言")) {
-                        mapLanguage = mapLanguage == ChinaMapView.LANG_ZH
-                                ? ChinaMapView.LANG_EN : ChinaMapView.LANG_ZH;
-                        prefs.edit().putInt("mapLanguage", mapLanguage).apply();
-                        mapView.setMapLanguage(mapLanguage);
-                        updateMapChip();
-                        toast(mapLanguage == ChinaMapView.LANG_ZH ? "地图：中文" : "Map: English");
-                    } else if (label.startsWith("地图设置")) {
-                        showMapSettingsDialog();
-                    } else if (label.startsWith("坐标系")) {
-                        showDatumDialog();
-                    } else if (label.startsWith("演示数据")) {
-                        injectDemo();
-                    } else if (label.startsWith("输入测试坐标")) {
-                        showInputDialog();
-                    } else if (label.startsWith("定位并发送")) {
-                        showLocationSendDialog();
-                    } else if (label.startsWith("定位协议")) {
-                        showProtocolDialog(null);
-                    } else if (label.contains("日志面板")) {
-                        toggleLog();
-                    } else if (label.startsWith("蓝牙诊断")) {
-                        showDiagnostics();
-                    } else if (label.startsWith("向模块发送")) {
-                        showSendDialog();
-                    } else if (label.startsWith("指尖陀螺")) {
-                        showSpinnerDialog();
-                    } else if (label.startsWith("地图显示")) {
-                        showMapDisplayDialog();
-                    } else if (label.startsWith("断开蓝牙")) {
+    }
+
+    private void showMoreMenu() {
+        final Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        final View root = LayoutInflater.from(this)
+                .inflate(R.layout.dialog_more, null, false);
+        dialog.setContentView(root);
+
+        TextView subtitle = root.findViewById(R.id.moreSubtitle);
+        subtitle.setText((viewMode == ChinaMapView.VIEW_WORLD ? "世界" : "中国")
+                + " · " + (mapLanguage == ChinaMapView.LANG_ZH ? "中文" : "EN")
+                + " · " + TileSource.typeName(mapType));
+
+        View close = root.findViewById(R.id.moreClose);
+        close.setOnClickListener(v -> dialog.dismiss());
+
+        LinearLayout content = root.findViewById(R.id.moreContent);
+        addMoreSection(content, "地图");
+        addMoreRow(content, new MoreItem(R.drawable.ic_map, "地图类型",
+                TileSource.typeName(mapType), false, false,
+                this::showMapTypeDialog), new MoreItem(R.drawable.ic_settings, "地图设置",
+                "在线源 / tk / 缓存", false, false,
+                this::showMapSettingsDialog), dialog);
+        addMoreRow(content, new MoreItem(R.drawable.ic_layers, "地图显示",
+                "图层 / 网格 / 标注", false, false,
+                this::showMapDisplayDialog), new MoreItem(R.drawable.ic_globe, "坐标系",
+                CoordSystems.chipLabel(datum), false, false,
+                this::showDatumDialog), dialog);
+
+        addMoreSection(content, "定位与协议");
+        addMoreRow(content, new MoreItem(R.drawable.ic_pin, "定位并发送",
+                "手机位置 / 蓝牙点", false, false,
+                this::showLocationSendDialog), new MoreItem(R.drawable.ic_protocol, "定位协议",
+                "模板、编码、校验", false, false,
+                () -> showProtocolDialog(null)), dialog);
+        addMoreRow(content, new MoreItem(R.drawable.ic_edit, "输入测试坐标",
+                "手动输入经纬度", false, false,
+                this::showInputDialog), new MoreItem(R.drawable.ic_demo, "演示数据",
+                "画一条示例轨迹", false, false,
+                this::injectDemo), dialog);
+
+        addMoreSection(content, "工具");
+        addMoreRow(content, new MoreItem(R.drawable.ic_log, "日志面板",
+                logVisible ? "当前显示" : "当前隐藏", logVisible, false,
+                this::toggleLog), new MoreItem(R.drawable.ic_bluetooth, "蓝牙诊断",
+                "服务 / 特征 / 错误", false, false,
+                this::showDiagnostics), dialog);
+        addMoreRow(content, new MoreItem(R.drawable.ic_terminal, "发送指令",
+                "AT / 自定义字符", false, false,
+                this::showSendDialog), new MoreItem(R.drawable.ic_spinner, "指尖陀螺",
+                "T01 / DEL ALL", false, false,
+                this::showSpinnerDialog), dialog);
+
+        if (connected) {
+            addMoreSection(content, "连接");
+            addMoreFull(content, new MoreItem(R.drawable.ic_power, "断开蓝牙连接",
+                    "停止连接，轨迹与红点保留", false, true, () -> {
                         bt.disconnect();
                         addLog("手动断开蓝牙");
-                    } else {
-                        showAbout();
+                    }), dialog);
+        }
+
+        addMoreSection(content, "关于");
+        addMoreFull(content, new MoreItem(R.drawable.ic_info, "关于 / 数据格式",
+                "版本、坐标格式、数据来源", false, false, this::showAbout), dialog);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.setGravity(Gravity.BOTTOM);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            WindowManager.LayoutParams attrs = window.getAttributes();
+            attrs.dimAmount = 0.45f;
+            window.setAttributes(attrs);
+            window.setWindowAnimations(android.R.style.Animation_Dialog);
+        }
+        dialog.setOnShowListener(d -> {
+            Window w = dialog.getWindow();
+            if (w != null) {
+                w.setLayout(WindowManager.LayoutParams.MATCH_PARENT,
+                        WindowManager.LayoutParams.WRAP_CONTENT);
+            }
+        });
+        dialog.show();
+
+        final View sheet = root.findViewById(R.id.moreSheet);
+        final ScrollView scroll = root.findViewById(R.id.moreScroll);
+        final int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.80f);
+        final int[] tries = {0};
+        final Runnable fitSheet = new Runnable() {
+            @Override
+            public void run() {
+                int h = sheet.getHeight();
+                if (h <= 0 && tries[0] < 4) {
+                    tries[0]++;
+                    root.postDelayed(this, 60);
+                    return;
+                }
+                if (h + dp(32) > max) {
+                    ViewGroup.LayoutParams lp = sheet.getLayoutParams();
+                    lp.height = max - dp(32);
+                    sheet.setLayoutParams(lp);
+                    LinearLayout.LayoutParams slp =
+                            (LinearLayout.LayoutParams) scroll.getLayoutParams();
+                    slp.height = 0;
+                    slp.weight = 1;
+                    scroll.setLayoutParams(slp);
+                    Window w = dialog.getWindow();
+                    if (w != null) {
+                        w.setLayout(WindowManager.LayoutParams.MATCH_PARENT, max);
                     }
-                })
-                .show();
+                }
+            }
+        };
+        root.postDelayed(fitSheet, 60);
+    }
+
+    private void addMoreSection(LinearLayout parent, String title) {
+        TextView tv = new TextView(this);
+        tv.setText(title);
+        tv.setTextColor(Color.parseColor("#90A4AE"));
+        tv.setTextSize(10.5f);
+        tv.setTypeface(null, Typeface.BOLD);
+        tv.setPadding(dp(6), dp(10), dp(6), dp(5));
+        parent.addView(tv);
+    }
+
+    private void addMoreRow(LinearLayout parent, MoreItem a, MoreItem b, Dialog dialog) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        View va = buildMoreItem(a, dialog);
+        row.addView(va, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        View spacer = new View(this);
+        row.addView(spacer, new LinearLayout.LayoutParams(dp(6), 1));
+        if (b != null) {
+            View vb = buildMoreItem(b, dialog);
+            row.addView(vb, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        } else {
+            View empty = new View(this);
+            row.addView(empty, new LinearLayout.LayoutParams(0, 1, 1f));
+        }
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = dp(6);
+        parent.addView(row, lp);
+    }
+
+    private void addMoreFull(LinearLayout parent, MoreItem item, Dialog dialog) {
+        View v = buildMoreItem(item, dialog);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = dp(6);
+        parent.addView(v, lp);
+    }
+
+    private View buildMoreItem(MoreItem item, Dialog dialog) {
+        View v = LayoutInflater.from(this).inflate(R.layout.more_item, null, false);
+        ImageView icon = v.findViewById(R.id.moreItemIcon);
+        TextView title = v.findViewById(R.id.moreItemTitle);
+        TextView subtitle = v.findViewById(R.id.moreItemSubtitle);
+        ImageView chevron = v.findViewById(R.id.moreItemChevron);
+
+        icon.setImageResource(item.icon);
+        title.setText(item.title);
+        if (item.subtitle.isEmpty()) {
+            subtitle.setVisibility(View.GONE);
+        } else {
+            subtitle.setText(item.subtitle);
+            subtitle.setVisibility(View.VISIBLE);
+        }
+        v.setSelected(item.selected);
+
+        int accent = item.danger ? Color.parseColor("#C62828")
+                : (item.selected ? Color.parseColor("#0D47A1") : Color.parseColor("#263238"));
+        title.setTextColor(accent);
+        if (item.danger) {
+            icon.setColorFilter(accent);
+            chevron.setColorFilter(Color.parseColor("#EF9A9A"));
+        } else if (item.selected) {
+            icon.setColorFilter(accent);
+            chevron.setColorFilter(Color.parseColor("#1565C0"));
+        }
+        v.setOnClickListener(x -> {
+            dialog.dismiss();
+            new Handler(Looper.getMainLooper()).postDelayed(item.action, 100);
+        });
+        return v;
     }
 
     private boolean hasNetwork() {
@@ -785,6 +941,47 @@ public class MainActivity extends Activity implements BtLink.Callback {
             titleText.setText(viewMode == ChinaMapView.VIEW_WORLD
                     ? "世界地图 · 蓝牙轨迹" : "中国地图 · 蓝牙轨迹");
         }
+    }
+
+    private void selectViewMode(int mode) {
+        if (viewMode == mode) {
+            return;
+        }
+        viewMode = mode;
+        prefs.edit().putInt("viewMode", mode).apply();
+        mapView.setViewMode(mode);
+        updateTitle();
+        applyMapType(false);
+        updateQuickSwitch();
+        toast(mode == ChinaMapView.VIEW_WORLD ? "世界视图" : "中国视图");
+    }
+
+    private void selectMapLanguage(int lang) {
+        if (mapLanguage == lang) {
+            return;
+        }
+        mapLanguage = lang;
+        prefs.edit().putInt("mapLanguage", lang).apply();
+        mapView.setMapLanguage(lang);
+        updateMapChip();
+        updateQuickSwitch();
+        toast(lang == ChinaMapView.LANG_ZH ? "地图：中文" : "Map: English");
+    }
+
+    private void updateQuickSwitch() {
+        styleQuick(quickWorld, viewMode == ChinaMapView.VIEW_WORLD);
+        styleQuick(quickChina, viewMode == ChinaMapView.VIEW_CHINA);
+        styleQuick(quickZh, mapLanguage == ChinaMapView.LANG_ZH);
+        styleQuick(quickEn, mapLanguage == ChinaMapView.LANG_EN);
+    }
+
+    private static void styleQuick(TextView v, boolean selected) {
+        if (v == null) {
+            return;
+        }
+        v.setSelected(selected);
+        v.setTextColor(selected ? Color.WHITE : Color.parseColor("#37474F"));
+        v.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
     }
 
     private void updateMapChip() {
@@ -1891,7 +2088,8 @@ public class MainActivity extends Activity implements BtLink.Callback {
     }
 
     private void showAbout() {
-        String msg = "世界地图蓝牙轨迹  v1.2.8\n\n"
+        String msg = "世界地图蓝牙轨迹  v1.2.9\n\n"
+                + "· 顶部快捷：世界/中国、中文/EN；更多面板分组操作\n"
                 + "· 世界地图 + 中国到县级，离线；中文/English 地图标签\n"
                 + "· 中国省/市/县（GCJ-02）；世界国家/省州/城市（Natural Earth）\n"
                 + "· 街道/卫星/卫星+路网/地形为在线瓦片，需要网络\n"

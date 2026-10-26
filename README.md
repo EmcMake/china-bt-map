@@ -5,9 +5,9 @@
 标准底图完全离线，支持中国/世界视图与**中文/English** 地图标签；街道 / 卫星 / 卫星+路网 / 地形为在线瓦片（需要网络）。
 
 - GitHub 仓库：<https://github.com/EmcMake/china-bt-map>
-- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.8 附件为 `china-bt-map-1.2.8.apk`）
-- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.8.apk>（点 Download）
-- 安装包：`dist/china-bt-map-1.2.8.apk`（约 11 MB，已签名）
+- 手机下载：Release 页面 <https://github.com/EmcMake/china-bt-map/releases>（v1.2.9 附件为 `china-bt-map-1.2.9.apk`）
+- 仓库内文件：<https://github.com/EmcMake/china-bt-map/blob/main/dist/china-bt-map-1.2.9.apk>（点 Download）
+- 安装包：`dist/china-bt-map-1.2.9.apk`（约 11 MB，已签名）
 - 包名：`com.btmap.china`，最低 Android 7.0（API 24），targetSdk 34
 - 纯 Java + Framework API，无 AndroidX / GMS / native 依赖
 - 权限：蓝牙相关 + `INTERNET` / `ACCESS_NETWORK_STATE`（仅在线图层使用）
@@ -16,11 +16,11 @@
 
 ## 一、安装
 
-把 `dist/china-bt-map-1.2.8.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
+把 `dist/china-bt-map-1.2.9.apk` 传到手机（微信/QQ、数据线、网盘均可），点击安装；
 系统提示“未知来源”时允许一次即可。或用 adb：
 
 ```bash
-adb install -r dist/china-bt-map-1.2.8.apk
+adb install -r dist/china-bt-map-1.2.9.apk
 ```
 
 > 自签名证书仅用于个人侧载，不能上架应用商店。升级请用同一个 `keystore/release.jks`
@@ -52,6 +52,23 @@ adb install -r dist/china-bt-map-1.2.8.apk
 | --- | --- |
 | ![世界街道](docs/screenshots/world_street.png) | ![中国英文](docs/screenshots/china_en.png) |
 
+| 顶部快捷切换（世界/中国、中文/EN） | 更多面板（分组卡片） |
+| --- | --- |
+| ![快捷切换](docs/screenshots/quick_switch.png) | ![更多面板](docs/screenshots/more_sheet.png) |
+
+### 顶部快捷切换与“更多”面板
+
+- 顶部常驻四个小按钮：
+  - **世界 / 中国**：直接切换视图；
+  - **中文 / EN**：直接切换地图标签语言；
+  - 当前项蓝底白字，切换即生效并保存；
+- “更多”改为圆角胶囊按钮，点开是**底部面板**：
+  - 圆角卡片、分组标题、两列图标卡片；
+  - 地图类型/坐标系显示当前值；
+  - 日志面板显示当前显示/隐藏状态；
+  - 已连接时显示红色“断开蓝牙连接”；
+  - 原菜单所有功能仍保留。
+
 ## 三、地图类型（顶部“地图：…”芯片，或 更多 → 地图类型）
 
 | 类型 | 数据来源 | 基准 | 需要网络 | 说明 |
@@ -80,7 +97,7 @@ adb install -r dist/china-bt-map-1.2.8.apk
   - 国家、省/州、城市标签实时切换，无需重启；
   - 中文模式中国境内继续用原有省/市/县中文名；
   - English 模式中国境内显示英文省名/城市名，县名暂无官方英文数据，只保留县界；
-- 入口：更多 → **视图：中国/世界**、**地图语言：中文/English**；地图芯片显示 `标准 · EN`；
+- 入口：顶部 **世界/中国**、**中文/EN** 小按钮；地图芯片显示 `标准 · EN`；
 - 默认世界视图；切换视图会适配到中国/世界范围，圆形定位按钮按当前视图适配；
 - 标准底图完全离线；世界街道/卫星/地形在线时自动使用 **Esri 全球瓦片**（高德仅中国境内完整）；
 - 在线瓦片的文字由瓦片提供方决定，不能像离线矢量底图那样在中文/English 间切换：
